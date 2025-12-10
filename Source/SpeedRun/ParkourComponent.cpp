@@ -16,13 +16,7 @@ UParkourComponent::UParkourComponent()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 
-	bIsDashing = false;
-	bIsSliding = false;
-	bIsCrouch = false;
-	bIsDrop = false;
-	bIsVaulting = false;
-	bIsMantling = false;
-	bIsHanging = false;
+	bCanWarp = false;
 }
 
 
@@ -36,6 +30,8 @@ void UParkourComponent::BeginPlay()
 	if (Player)
 	{
 		PlayerMovement = Player->GetCharacterMovement();
+
+		TagContainer = Player->GetTagContainer();
 	}
 }
 
@@ -46,28 +42,114 @@ void UParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 }
+
+
+void UParkourComponent::SetupParkourInputComponent(UEnhancedInputComponent* ParkourInputComponent)
+{
+	ParkourInputComponent->BindAction(UpAction, ETriggerEvent::Started, this, &UParkourComponent::Input_Up_Start);
+	ParkourInputComponent->BindAction(UpAction, ETriggerEvent::Completed, this, &UParkourComponent::Input_Up_End);
+
+	ParkourInputComponent->BindAction(DownAction, ETriggerEvent::Started, this, &UParkourComponent::Input_Down);
+
+	ParkourInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &UParkourComponent::Sprint);
+
+	ParkourInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &UParkourComponent::Interaction);
+}
 //-----------------------
 
-/* [Called when the Player State Changes for input key ] */
-void UParkourComponent::DashOrSlide()
+
+/* [Called when the Player Action Changes for input key ] */
+
+void UParkourComponent::Input_Up_Start(const FInputActionValue& Value)
+{
+	if (TagContainer->HasTag(HangTag)) // 매달린 상태
+	{
+		if (TagContainer->HasTag(ShimmyTag))
+		{
+			ShimmyJump();
+		}
+		else if (TagContainer->HasTag(RopeTag))
+		{
+			RopeJump();
+		}
+		else
+		{
+			Mantle();
+		}
+		return;
+	}
+	
+
+	if (TagContainer->HasTag(WallRunningTag))
+	{
+		WallJump();
+		//대각선 반대방향으로 점프
+		return;
+	}
+
+
+	if (TryParkourJump()) //[Vault, swing]
+	{
+		return;
+	}
+		
+
+	Player->Jump();
+}
+
+
+void UParkourComponent::Input_Up_End(const FInputActionValue& Value)
+{
+	// if-else로 상황에 따라 다르게 stop()
+	Player->StopJumping();
+}
+
+
+void UParkourComponent::Input_Down(const FInputActionValue& Value)
+{
+	if (TagContainer->HasTag(HangTag)) // 매달린 상태
+	{
+		Drop();
+
+		return;
+	}
+	else if(TagContainer->HasTag(FallingTag)) // 낙하상태
+	{
+		Roll();
+
+		return;
+	}
+	
+	if (!PlayerMovement->IsFalling())
+	{
+		float CurrentSpeed = Player->GetVelocity().Size2D();
+		float RunThreshold = 100.f; //달리는 상태 기준
+
+		if (CurrentSpeed > RunThreshold) // 달리는 상태
+		{
+			StartSliding(); 
+		}
+		else // 멈춤/걷기
+		{
+			if (TagContainer->HasTag(CrouchedTag))
+			{
+				UnCrouch(); 
+			}
+			else
+			{
+				Crouch(); 
+			}
+		}
+	}
+	
+}
+
+
+void UParkourComponent::Sprint(const FInputActionValue& Value)
 {
 	if (PlayerMovement->IsFalling())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("IsFalling!!"));
-
-		return;
-	}
-
-	if (bIsDashing || bIsSliding) 
-	{
-		UE_LOG(LogTemp, Warning, TEXT("already dashing or sliding!!"));
-
-		return;
-	}
-
-	if (CanSliding())
-	{
-		StartSliding();
+		StartAirDash();
 	}
 	else
 	{
@@ -76,45 +158,102 @@ void UParkourComponent::DashOrSlide()
 }
 
 
-void UParkourComponent::CrouchOrDrop()
+
+
+void UParkourComponent::Interaction()
 {
-	if (bIsDrop)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("already drop!!"));
-
-		return;
-	}
-
-
-	if (PlayerMovement->IsFalling())
-	{
-		DoDrop();
-	}
-	else
-	{
-		DoCrouch();
-	}
-
-	return;
+	UE_LOG(LogTemp, Warning, TEXT("Interaction"));
+	// 해당 액터 Interface 작성해서 공통적으로 함수가지게 하고
+	// 각 액터마다 다르게 로직 실행되도록 구현
 }
 
-
-void UParkourComponent::ParkourJump()
-{
-	if (CanJumping())
-	{
-		DoJump();
-	}
-	
-	return;
-}
 //-----------------------------------
 
+
+/* [Action Logic & called Animation Motion Warping] */
+
+/* Up Key Actions */
+void UParkourComponent::ShimmyJump()
+{
+}
+void UParkourComponent::RopeJump()
+{
+}
+void UParkourComponent::Mantle()
+{
+}
+void UParkourComponent::WallJump()
+{
+}
+bool UParkourComponent::TryParkourJump()
+{
+	return false;
+}
+/*---*/
+
+/* Down Key Actions */
+void UParkourComponent::StartSliding()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Sliding Start!!"));
+
+
+	/* End Sliding */
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::EndSliding, 0.5f);
+
+	TagContainer->AddTag(SlidingTag);
+}
+
+void UParkourComponent::EndSliding()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Sliding End!!"));
+
+	/* 슬라이딩 도중 위에 막힌채로 멈추면 crouch로 변경 로직 */
+	TagContainer->RemoveTag(SlidingTag);
+}
+
+void UParkourComponent::Crouch()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Crouch"));
+
+	TagContainer->AddTag(CrouchedTag);
+}
+
+void UParkourComponent::UnCrouch()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Stand Up"));
+
+	TagContainer->RemoveTag(CrouchedTag);
+}
+
+void UParkourComponent::Drop()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Drop"));
+
+	TagContainer->RemoveTag(HangTag);
+
+	// 매달려있는 상태에서 손 놓기
+	// 봉을 타고 있지 않다면 falling 상태
+	// 
+	// 
+	// 봉이라면 봉잡고 쭉 내려가기
+	// 봉을 타고 있는 상태에서는 falling x
+}
+
+void UParkourComponent::Roll()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Roll"));
+
+	TagContainer->RemoveTag(FallingTag);
+
+	// 추락 상태에서 땅에 가까울때 호출되면 앞구르기로 안전하게 착지
+}
+/*---*/
+
+/* Sprint Key Actions */
 void UParkourComponent::StartDash()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Dash!!"));
-
-	bIsDashing = true;
 
 	const FVector ForwardDir = Player->GetActorRotation().Vector();
 	Player->LaunchCharacter(ForwardDir * DashDistance, true, true);
@@ -131,84 +270,56 @@ void UParkourComponent::StartDash()
 		}
 	}*/
 
+	TagContainer->AddTag(DashTag);
+
 	FTimerHandle TimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::EndDash, 1.0f);
-
 }
-
 
 void UParkourComponent::EndDash()
 {
-	if (bIsDashing)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Dash Reset!!"));
+	UE_LOG(LogTemp, Warning, TEXT("Dash End"));
 
-		bIsDashing = false;
-	}
+	TagContainer->RemoveTag(DashTag);
 }
 
-
-void UParkourComponent::StartSliding()
+void UParkourComponent::StartAirDash()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Sliding!!"));
+	UE_LOG(LogTemp, Warning, TEXT("Air Dash!!"));
 
-	/* Start Sliding */
-	bIsSliding = true;
+	const FVector ForwardDir = Player->GetActorRotation().Vector();
+	Player->LaunchCharacter(ForwardDir * DashDistance, true, true);
 
-	/* End Sliding */
+	/* play the dash montage
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		const float MontageLength = AnimInstance->Montage_Play(DashMontage, 1.0f, EMontagePlayReturnType::MontageLength, 0.0f, true);
+
+		// has the montage played successfully?
+		if (MontageLength > 0.0f)
+		{
+			AnimInstance->Montage_SetEndDelegate(OnDashMontageEnded, DashMontage);
+		}
+	}*/
+
+	TagContainer->AddTag(AirDashTag);
+
 	FTimerHandle TimerHandle;
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::EndSliding, 0.5f);
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::EndAirDash, 1.0f);
 }
 
-
-void UParkourComponent::EndSliding()
+void UParkourComponent::EndAirDash()
 {
-	if (bIsSliding)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Sliding Reset!!"));
+	UE_LOG(LogTemp, Warning, TEXT("AirDash End"));
 
-		bIsSliding = false;
-
-		/* 슬라이딩 도중 위에 막힌채로 멈추면 crouch로 변경 로직 */
-	}
+	TagContainer->RemoveTag(AirDashTag);
 }
 
-void UParkourComponent::DoCrouch()
-{
-	if (bIsCrouch)
-	{
-		// 위에 장애물이 없을 시 (일어설수있는 공간이 있는 경우)
-		// crouch 비활성화 -> Idle로 변경
+/*---*/
 
-		UE_LOG(LogTemp, Warning, TEXT("Stand Up"));
-
-		bIsCrouch = false;
-	}
-	else
-	{
-		// crouch 활성화
-		UE_LOG(LogTemp, Warning, TEXT("Crouch"));
-
-		bIsCrouch = true;
-
-	}
-}
-
-void UParkourComponent::DoDrop()
-{
-
-	UE_LOG(LogTemp, Warning, TEXT("Drop"));
-
-	// 매달려있는 상태에서 손 놓기
-	//  벽 두개 사이 작은틈이 있으면 벽타고 마찰로 내려가기
-	// 봉이라면 봉잡고 쭉 내려가기
-	
-	// 손 놓기 아래로 떨어지기
-	// bIsDrop = true;
-	
-	/* 바닥에 착지했으면 bisdrop = false; */
-
-}
+/// <summary>
+/// Move Function
+/// </summary>
 void UParkourComponent::DoJump()
 {
 	
@@ -271,12 +382,23 @@ void UParkourComponent::DoMiddleJump(const FVector& HitLocation)
 		if (HitResult.bStartPenetrating) // The trace started in penetration
 		{
 			UE_LOG(LogTemp, Warning, TEXT("The trace started in penetration"));
+
 			break;
 		}
 		else if (bHitBlock)
 		{
 			LastHitIndex = i;
 			VerticalHitResult = HitResult;
+
+			if (i == 0)
+			{
+				VaultStartPos = VerticalHitResult.ImpactPoint;
+			}
+			
+			VaultMiddlePos = VerticalHitResult.ImpactPoint;
+			bCanWarp = true;
+
+			DrawDebugCapsule(GetWorld(), VaultMiddlePos, 5.0f, 5.0f, FQuat::Identity, FColor::Yellow, false, 2.f, 0, 1.f);
 		}
 		else
 		{
@@ -303,6 +425,8 @@ void UParkourComponent::DoMiddleJump(const FVector& HitLocation)
 		{
 			float LandZ = LandHitResult.Location.Z;
 			float PlayerFeetZ = Player->GetMesh()->GetComponentLocation().Z;
+
+			VaultLandPos = LandHitResult.Location;
 
 			/* vault 전후 바닥 높이 차이 확인 */
 			if (FMath::IsWithinInclusive(LandZ, PlayerFeetZ - 100.f, PlayerFeetZ + 50.f))
@@ -352,6 +476,8 @@ void UParkourComponent::DoHighJump(const FHitResult& HitResult)
 void UParkourComponent::DoVault()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Vaulting !!!"));
+
+	OnVaultMotionWarping.Broadcast();
 }
 
 
@@ -400,44 +526,6 @@ bool UParkourComponent::CanSliding()
 
 	return false;
 }
-
-bool UParkourComponent::CanJumping()
-{
-	if (PlayerMovement->IsFalling() || bIsVaulting || bIsMantling) return false;
-
-	return true;
-}
-
-bool UParkourComponent::CanVaulting()
-{
-	/* Create a Three Trace(Low, Middle, High) to Check the Block Height */
-	int LastHitIndex = 0;
-	FVector HitLocation;
-	FHitResult HitResult;
-
-	for (int i = 0; i < 3; i++)
-	{
-		FVector StartLocation = Player->GetActorLocation() + FVector(0.f, 0.f, TraceGap_BlockHeight * i);
-		FVector EndLocation = StartLocation + Player->GetActorForwardVector() * TraceLength_BlockHeight;
-
-		// test 후 channel change
-		bool bHitBlock = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECollisionChannel::ECC_GameTraceChannel1);
-		DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 2.f, 0, 1.f);
-
-		if (bHitBlock)
-		{
-			LastHitIndex = i;
-			HitLocation = HitResult.Location;
-		}
-	}
-
-	return false;
-}
-
-/// <summary>
-/// ////////////////////////////////////////////////
-/// </summary>
-/// <returns></returns>
 
 bool UParkourComponent::CheckHitWall()
 {

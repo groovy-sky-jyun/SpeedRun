@@ -12,6 +12,8 @@
 #include "InputActionValue.h"
 #include "SpeedRun.h"
 #include "ParkourComponent.h"
+#include "MotionWarpingComponent.h" 
+#include "GameplayTagContainer.h"
 
 ASpeedRunCharacter::ASpeedRunCharacter()
 {
@@ -51,7 +53,7 @@ ASpeedRunCharacter::ASpeedRunCharacter()
 
 	// Create Parkour Movement Component
 	ParkourComponent = CreateDefaultSubobject<UParkourComponent>(TEXT("ParkourComponent"));
-
+	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarp"));
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
@@ -61,11 +63,6 @@ void ASpeedRunCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 {
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
-		// Jumping | Vaulting
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::JumpStart);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ASpeedRunCharacter::JumpEnd);
-
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::Move);
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::Look);
@@ -73,11 +70,10 @@ void ASpeedRunCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::Look);
 
-		// Dashing | Sliding
-		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::Dash);
-
-		// Crouch | Drop
-		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::Crouch);
+		if (ParkourComponent)
+		{
+			ParkourComponent->SetupParkourInputComponent(EnhancedInputComponent);
+		}
 	}
 	else
 	{
@@ -103,40 +99,10 @@ void ASpeedRunCharacter::Look(const FInputActionValue& Value)
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
 }
 
-void ASpeedRunCharacter::JumpStart()
-{
-	if (ParkourComponent)
-	{
-		ParkourComponent->ParkourJump();
-	}
-	else
-	{
-		Jump();
-	}
-}
-
-void ASpeedRunCharacter::JumpEnd()
-{
-	// signal the character to stop jumping
-	StopJumping();
-}
 
 
-void ASpeedRunCharacter::Dash(const FInputActionValue& Value)
-{
-	if (ParkourComponent)
-	{
-		ParkourComponent->DashOrSlide();
-	}
-}
 
-void ASpeedRunCharacter::Crouch(const FInputActionValue& Value)
-{
-	if (ParkourComponent)
-	{
-		ParkourComponent->CrouchOrDrop();
-	}
-}
+
 
 
 void ASpeedRunCharacter::DoMove(float Right, float Forward)
@@ -168,4 +134,10 @@ void ASpeedRunCharacter::DoLook(float Yaw, float Pitch)
 		AddControllerPitchInput(Pitch);
 	}
 }
+
+FGameplayTagContainer* ASpeedRunCharacter::GetTagContainer()
+{
+	return GameplayTagContainer;
+}
+
 

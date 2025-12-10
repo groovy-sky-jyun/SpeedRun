@@ -4,21 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "GameplayTagContainer.h"
+#include "EnhancedInputComponent.h"
 #include "ParkourComponent.generated.h"
 
 class ASpeedRunCharacter;
 class UCharacterMovementComponent;
 class UCapsuleComponent;
+class UInputAction;
+struct FInputActionValue;
 
-UENUM(BlueprintType)
-enum class EState : uint8 {
-	None,
-	WallRun,
-	Vault,
-	Mantle,
-	Slide,
-	Hang
-};
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnVaultMotionWarping);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SPEEDRUN_API UParkourComponent : public UActorComponent
@@ -33,37 +29,88 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-public:	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Owner")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Owner")
 	TObjectPtr<ASpeedRunCharacter> Player;
 
 	UPROPERTY()
 	TObjectPtr<UCharacterMovementComponent> PlayerMovement;
 
+	FGameplayTagContainer* TagContainer;
+
+
+
+public:	
+	// Called every frame
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	/** Initialize input action bindings */
+	void SetupParkourInputComponent(class UEnhancedInputComponent* ParkourInputComponent);
+
+
+
+protected:
+
+	/* Jump Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UpAction;
+
+	/* [Crouch/Slide/Drop/Roll] */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* DownAction;
+
+	/* Dash Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* SprintAction;
+
+	/* [Interaction] */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* InteractAction;
+
+
 
 public: /* Called when the Player State Changes for input key */
 
-	UFUNCTION()
-	void DashOrSlide();
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	void Input_Up_Start(const FInputActionValue& Value);
 
-	UFUNCTION()
-	void CrouchOrDrop();
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	void Input_Up_End(const FInputActionValue& Value);
 
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	void Input_Down(const FInputActionValue& Value);
+
+	/** Called for dashing input */
+	void Sprint(const FInputActionValue& Value);
+
+	/* Interation Key Actions */
 	UFUNCTION()
-	void ParkourJump();
-	
+	void Interaction();
+
+
 
 protected:
+	/* Up Key Actions */
 	UFUNCTION()
-	void StartDash();
+	void ShimmyJump();
 
 	UFUNCTION()
-	void EndDash();
+	void RopeJump();
 
+	UFUNCTION()
+	void Mantle();
+
+	UFUNCTION()
+	void WallJump();
+
+	UFUNCTION()
+	bool TryParkourJump();
+	/*---*/
+
+
+	/* Down Key Actions */
 	UFUNCTION()
 	void StartSliding();
 
@@ -71,11 +118,36 @@ protected:
 	void EndSliding();
 
 	UFUNCTION()
-	void DoCrouch();
+	void Crouch();
 
 	UFUNCTION()
-	void DoDrop();
+	void UnCrouch();
 
+	UFUNCTION()
+	void Drop();
+
+	UFUNCTION()
+	void Roll();
+	/*---*/
+
+
+	/* Sprint Key Actions */
+	UFUNCTION()
+	void StartDash();
+
+	UFUNCTION()
+	void EndDash();
+
+	UFUNCTION()
+	void StartAirDash();
+
+	UFUNCTION()
+	void EndAirDash();
+	/*---*/
+
+
+
+	// Move Function
 	UFUNCTION()
 	void DoJump();
 
@@ -94,39 +166,10 @@ protected:
 	UFUNCTION()
 	void DoHang();
 
-
-protected:
 	UFUNCTION()
 	bool CanSliding();
+	//----------------
 
-	UFUNCTION()
-	bool CanJumping();
-
-	UFUNCTION()
-	bool CanVaulting();
-
-
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State")
-	bool bIsDashing;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State")
-	bool bIsSliding;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State")
-	bool bIsCrouch;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State")
-	bool bIsDrop;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State")
-	bool bIsVaulting;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State")
-	bool bIsMantling;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State")
-	bool bIsHanging;
 
 
 protected:
@@ -153,6 +196,60 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vault|Trace|Length")
 	float TraceLength_BlockVertical = 50.f;
+
+
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MotionWarping|Pos")
+	FVector VaultStartPos;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MotionWarping|Pos")
+	FVector VaultMiddlePos;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MotionWarping|Pos")
+	FVector VaultLandPos;
+
+
+
+/* Motion Warping State */
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MotionWarping|State")
+	bool bCanWarp = false;
+
+
+public:
+	UPROPERTY(BlueprintAssignable, Category="MotionWarping")
+	FOnVaultMotionWarping OnVaultMotionWarping;
+
+
+/* Tags|State */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|State", Meta = (Categories = "State.Parkour"))
+	FGameplayTag WallRunningTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|State", Meta = (Categories = "State.Parkour"))
+	FGameplayTag HangTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|State", Meta = (Categories = "State.Parkour"))
+	FGameplayTag RopeTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|State", Meta = (Categories = "State.Parkour"))
+	FGameplayTag ShimmyTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|State", Meta = (Categories = "State.Movement"))
+	FGameplayTag FallingTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|State", Meta = (Categories = "State.Status"))
+	FGameplayTag CrouchedTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|State", Meta = (Categories = "State.Status"))
+	FGameplayTag SlidingTag;
+
+	/* Tags|State */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|Action", Meta = (Categories = "Action.Movement"))
+	FGameplayTag DashTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|Action", Meta = (Categories = "Action.Movement"))
+	FGameplayTag AirDashTag;
 
 
 
