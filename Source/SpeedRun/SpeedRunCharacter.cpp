@@ -59,6 +59,24 @@ ASpeedRunCharacter::ASpeedRunCharacter()
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
 
+void ASpeedRunCharacter::ExecuteParkourDelegate(const FOnParkourAnimEndedDelegate& DelegateToCall)
+{
+	if (DelegateToCall.IsBound())
+	{
+		DelegateToCall.Execute();
+	}
+}
+
+UMotionWarpingComponent* ASpeedRunCharacter::GetMotionWarpingComponent()
+{
+	return MotionWarpingComponent;
+}
+
+UParkourComponent* ASpeedRunCharacter::GetParkourComponent()
+{
+	return ParkourComponent;
+}
+
 void ASpeedRunCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
@@ -134,10 +152,3 @@ void ASpeedRunCharacter::DoLook(float Yaw, float Pitch)
 		AddControllerPitchInput(Pitch);
 	}
 }
-
-FGameplayTagContainer* ASpeedRunCharacter::GetTagContainer()
-{
-	return GameplayTagContainer;
-}
-
-

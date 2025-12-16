@@ -6,17 +6,17 @@
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
 #include "EnhancedInputComponent.h"
+#include "Animation/AnimMontage.h"
+#include "SpeedRunCharacter.h"
 #include "ParkourComponent.generated.h"
 
-class ASpeedRunCharacter;
 class UCharacterMovementComponent;
 class UCapsuleComponent;
 class UInputAction;
 struct FInputActionValue;
+struct FParkourActionPayload;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnVaultMotionWarping);
-
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(Blueprintable, ClassGroup =(Custom), meta=(BlueprintSpawnableComponent))
 class SPEEDRUN_API UParkourComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -36,10 +36,10 @@ protected:
 	TObjectPtr<ASpeedRunCharacter> Player;
 
 	UPROPERTY()
-	TObjectPtr<UCharacterMovementComponent> PlayerMovement;
+	TObjectPtr<UCharacterMovementComponent> Movement;
 
-	FGameplayTagContainer* TagContainer;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameplayTag")
+	FGameplayTagContainer ParkourTags;
 
 
 public:	
@@ -218,9 +218,6 @@ public:
 
 
 public:
-	UPROPERTY(BlueprintAssignable, Category="MotionWarping")
-	FOnVaultMotionWarping OnVaultMotionWarping;
-
 
 /* Tags|State */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tags|State", Meta = (Categories = "State.Parkour"))
@@ -252,39 +249,88 @@ public:
 	FGameplayTag AirDashTag;
 
 
-
-
-/// <summary>
-/// ////////
-/// </summary>
 protected:
-	UFUNCTION()
-	bool CheckHitWall();
+	UPROPERTY(EditAnywhere, Category = "Parkour|Slide")
+	float SlideDistance = 200.0f; // 속도가 이 이하로 떨어지면 슬라이딩 종료
 
-	UFUNCTION()
-	bool IsWallJump();
-
-	/* 양쪽 벽 번갈아 타고 올라가는 동작 */
-	UFUNCTION()
-	void DoWallJump();
-
-	UFUNCTION()
-	void SlowJumpToLand();
-
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Wall")
-	bool bIsWallRun;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Vault")
-	bool bIsVaultJump;
 
 public:
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Vault|Animation")
-	FVector FirstVaultingPos;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Vault|Animation")
-	FVector MiddleVaultingPos;
+	// Slide
+	UPROPERTY(EditAnywhere, Category = "Anim")
+	UAnimMontage* SlideAnim;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Vault|Animation")
-	FVector LastVaultingPos;
+	UPROPERTY(EditAnywhere, Category = "Anim")
+	FName SlideTargetName;
+
+	// Crouch
+	UPROPERTY(EditAnywhere, Category = "Anim")
+	UAnimMontage* CrouchAnim;
+
+	UPROPERTY(EditAnywhere, Category = "Anim")
+	float MaxCrouchSpeed = 150.f;
+
+	UPROPERTY(EditAnywhere, Category = "Anim")
+	float CrouchedHalfHeight = 60.f;
+
+	float DefaultCrouchedHalfHeight;
+
+public:
+	UFUNCTION()
+	void AddTag(FGameplayTag NewTag);
+
+	UFUNCTION()
+	void RemoveTag(FGameplayTag Tag);
+
+	UFUNCTION()
+	bool HasTag(FGameplayTag Tag);
+
+
+////// Hang & Climb up
+public:
+	bool bIsOnLedge = false;
+
+	bool bLedgeDetected = false;
+	FVector LedgeLocation;
+	FVector LedgeNormal;
+
+	// Check for a hangable ledge.
+	UFUNCTION()
+	void TraceLedge(float InitialZOffset, float TraceDistance, float TraceVertical);
+
+public:
+	UFUNCTION()
+	void HangOnLedge();
+		
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ledge")
+	bool bBelowLedgeHasSurfaceL = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ledge")
+	bool bBelowLedgeHasSurfaceR = false;
+
+	UFUNCTION()
+	void CheckIfBelowLedgeHasSurface();
+
+public:
+	UPROPERTY(EditAnywhere, Category = "Anim")
+	UAnimMontage* IdleToBracedHang;
+
+	UPROPERTY(EditAnywhere, Category = "Anim")
+	UAnimMontage* IdleToFreeHang;
+
+	UFUNCTION()
+	void SetFlying(FVector HangLocation, FRotator HangRotation);
+
+	UFUNCTION()
+	void SetIsOnLedge(bool Value);
+
+	UFUNCTION()
+	bool GetIsOnLedge();
+
+	UFUNCTION()
+	bool GetBelowLedgeHasSurfaceR();
+
+	UFUNCTION()
+	bool GetBelowLedgeHasSurfaceL();
 };

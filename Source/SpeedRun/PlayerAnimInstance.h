@@ -53,4 +53,28 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Direction;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+	bool bIsCrouching;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	bool bIsOnLedge;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	bool bBelowLedgeHasSurfaceL;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	bool bBelowLedgeHasSurfaceR;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	float LeftFootAlpha;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	float RightFootAlpha;
+
+
+public:
+	UFUNCTION()
+	void AnimNotify_ToHangEnd();
+
 };

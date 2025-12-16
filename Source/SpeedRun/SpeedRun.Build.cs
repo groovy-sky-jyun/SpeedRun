@@ -20,8 +20,9 @@ public class SpeedRun : ModuleRules
 			"UMG",
 			"Slate",
 			"MotionWarping",
-			"GameplayTags"
-		});
+			"GameplayTags",
+            "AnimGraphRuntime"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 

@@ -8,15 +8,22 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "Animation/AnimMontage.h"
+#include "TimerManager.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "MotionWarpingComponent.h"
 
 // Sets default values for this component's properties
 UParkourComponent::UParkourComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 
 	bCanWarp = false;
+
+	
+
 }
 
 
@@ -29,9 +36,20 @@ void UParkourComponent::BeginPlay()
 
 	if (Player)
 	{
-		PlayerMovement = Player->GetCharacterMovement();
+		Movement = Player->GetCharacterMovement();
+	
+		if (Movement)
+		{
+			// 1. 앉기 활성화
+			Movement->GetNavAgentPropertiesRef().bCanCrouch = true;
 
-		TagContainer = Player->GetTagContainer();
+			DefaultCrouchedHalfHeight = Movement->CrouchedHalfHeight;
+
+			// 2. 앉았을 때 캡슐 높이, 속도 설정
+			Movement->MaxWalkSpeedCrouched = MaxCrouchSpeed;
+			Movement->CrouchedHalfHeight = CrouchedHalfHeight;
+		}
+		
 	}
 }
 
@@ -40,7 +58,6 @@ void UParkourComponent::BeginPlay()
 void UParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
 }
 
 
@@ -57,18 +74,32 @@ void UParkourComponent::SetupParkourInputComponent(UEnhancedInputComponent* Park
 }
 //-----------------------
 
+void UParkourComponent::AddTag(FGameplayTag NewTag)
+{
+	ParkourTags.AddTag(NewTag);
+}
+
+void UParkourComponent::RemoveTag(FGameplayTag Tag)
+{
+	ParkourTags.RemoveTag(Tag);
+}
+
+bool UParkourComponent::HasTag(FGameplayTag Tag)
+{
+	return ParkourTags.HasTag(Tag);
+}
 
 /* [Called when the Player Action Changes for input key ] */
 
 void UParkourComponent::Input_Up_Start(const FInputActionValue& Value)
 {
-	if (TagContainer->HasTag(HangTag)) // 매달린 상태
+	if (HasTag(HangTag)) // 매달린 상태
 	{
-		if (TagContainer->HasTag(ShimmyTag))
+		if (HasTag(ShimmyTag))
 		{
 			ShimmyJump();
 		}
-		else if (TagContainer->HasTag(RopeTag))
+		else if (HasTag(RopeTag))
 		{
 			RopeJump();
 		}
@@ -80,7 +111,7 @@ void UParkourComponent::Input_Up_Start(const FInputActionValue& Value)
 	}
 	
 
-	if (TagContainer->HasTag(WallRunningTag))
+	if (HasTag(WallRunningTag))
 	{
 		WallJump();
 		//대각선 반대방향으로 점프
@@ -88,13 +119,8 @@ void UParkourComponent::Input_Up_Start(const FInputActionValue& Value)
 	}
 
 
-	if (TryParkourJump()) //[Vault, swing]
-	{
-		return;
-	}
+	TryParkourJump();
 		
-
-	Player->Jump();
 }
 
 
@@ -107,31 +133,33 @@ void UParkourComponent::Input_Up_End(const FInputActionValue& Value)
 
 void UParkourComponent::Input_Down(const FInputActionValue& Value)
 {
-	if (TagContainer->HasTag(HangTag)) // 매달린 상태
+	if (Movement->IsFalling())
 	{
-		Drop();
-
+		if (HasTag(HangTag)) // 매달린 상태
+		{
+			Drop();
+		}
+		else if (HasTag(FallingTag)) // 낙하상태
+		{
+			Roll();
+		}
 		return;
 	}
-	else if(TagContainer->HasTag(FallingTag)) // 낙하상태
-	{
-		Roll();
-
-		return;
-	}
-	
-	if (!PlayerMovement->IsFalling())
+	else
 	{
 		float CurrentSpeed = Player->GetVelocity().Size2D();
-		float RunThreshold = 100.f; //달리는 상태 기준
+		float RunThreshold = 150.f; //달리는 상태 기준
 
 		if (CurrentSpeed > RunThreshold) // 달리는 상태
 		{
-			StartSliding(); 
+			if (!HasTag(SlidingTag))
+			{
+				StartSliding();
+			}
 		}
 		else // 멈춤/걷기
 		{
-			if (TagContainer->HasTag(CrouchedTag))
+			if (HasTag(CrouchedTag))
 			{
 				UnCrouch(); 
 			}
@@ -140,6 +168,7 @@ void UParkourComponent::Input_Down(const FInputActionValue& Value)
 				Crouch(); 
 			}
 		}
+		return;
 	}
 	
 }
@@ -147,7 +176,7 @@ void UParkourComponent::Input_Down(const FInputActionValue& Value)
 
 void UParkourComponent::Sprint(const FInputActionValue& Value)
 {
-	if (PlayerMovement->IsFalling())
+	if (Movement->IsFalling())
 	{
 		StartAirDash();
 	}
@@ -187,6 +216,24 @@ void UParkourComponent::WallJump()
 }
 bool UParkourComponent::TryParkourJump()
 {
+	if (!bIsOnLedge)
+	{
+		float InitialZOffset = Movement->IsFalling() ? 50.f : 25.f;
+		float TraceVertical = Movement->IsFalling() ? 75.f : 10.f;
+		
+		TraceLedge(InitialZOffset, 100.f, TraceVertical);
+
+		if (!bLedgeDetected)
+		{
+			Player->Jump();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Hang On Ledge"));
+			HangOnLedge();
+		}
+	}
+	
 	return false;
 }
 /*---*/
@@ -196,41 +243,74 @@ void UParkourComponent::StartSliding()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Sliding Start!!"));
 
+	AddTag(SlidingTag);
 
-	/* End Sliding */
-	FTimerHandle TimerHandle;
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::EndSliding, 0.5f);
+	Player->Crouch(); //기본 Crouch
 
-	TagContainer->AddTag(SlidingTag);
+	FVector StartLocation = Player->GetActorLocation();
+	FVector ForwardVector = Player->GetActorForwardVector();
+
+	FVector TargetLocation = StartLocation + (ForwardVector * SlideDistance);
+	FRotator TargetRotation = Player->GetActorRotation();
+
+	FParkourActionPayload ParkourActionPayload = {
+		.AnimMontage = SlideAnim,
+		.TargetName = SlideTargetName,  
+		.TargetLocation = TargetLocation, 
+		.TargetRotation = TargetRotation,
+	};
+
+	ParkourActionPayload.OnParkourAnimEndedDelegate.BindDynamic(this, &UParkourComponent::EndSliding);
+
+	Player->PlayMotionWarping(ParkourActionPayload);
+
 }
+	
 
 void UParkourComponent::EndSliding()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Sliding End!!"));
 
+	RemoveTag(SlidingTag);
+
+	Player->UnCrouch(); //기본 UnCrouch
+
 	/* 슬라이딩 도중 위에 막힌채로 멈추면 crouch로 변경 로직 */
-	TagContainer->RemoveTag(SlidingTag);
+ 
 }
 
 void UParkourComponent::Crouch()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Crouch"));
 
-	TagContainer->AddTag(CrouchedTag);
+	AddTag(CrouchedTag);
+
+	Player->Crouch(); //기본 Crouch
+
+	FParkourActionPayload ParkourActionPayload;
+	ParkourActionPayload.AnimMontage = CrouchAnim;
+	Player->PlayMotionWarping(ParkourActionPayload);
 }
 
 void UParkourComponent::UnCrouch()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Stand Up"));
 
-	TagContainer->RemoveTag(CrouchedTag);
+	RemoveTag(CrouchedTag);
+
+	Player->UnCrouch(); //기본 UnCrouch
+
+//	Movement->CrouchedHalfHeight = DefaultCrouchedHalfHeight;
+	//Movement->GetNavAgentPropertiesRef().bCanCrouch = false;
+
+	//Player->PlayMotionWarping(ParkourActionPayload);
 }
 
 void UParkourComponent::Drop()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Drop"));
 
-	TagContainer->RemoveTag(HangTag);
+	RemoveTag(HangTag);
 
 	// 매달려있는 상태에서 손 놓기
 	// 봉을 타고 있지 않다면 falling 상태
@@ -244,7 +324,7 @@ void UParkourComponent::Roll()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Roll"));
 
-	TagContainer->RemoveTag(FallingTag);
+	RemoveTag(FallingTag);
 
 	// 추락 상태에서 땅에 가까울때 호출되면 앞구르기로 안전하게 착지
 }
@@ -270,17 +350,17 @@ void UParkourComponent::StartDash()
 		}
 	}*/
 
-	TagContainer->AddTag(DashTag);
+	AddTag(DashTag);
 
 	FTimerHandle TimerHandle;
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::EndDash, 1.0f);
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::EndDash, 0.5f);
 }
 
 void UParkourComponent::EndDash()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Dash End"));
 
-	TagContainer->RemoveTag(DashTag);
+	RemoveTag(DashTag);
 }
 
 void UParkourComponent::StartAirDash()
@@ -302,17 +382,17 @@ void UParkourComponent::StartAirDash()
 		}
 	}*/
 
-	TagContainer->AddTag(AirDashTag);
+	AddTag(AirDashTag);
 
 	FTimerHandle TimerHandle;
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::EndAirDash, 1.0f);
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::EndAirDash, 0.5f);
 }
 
 void UParkourComponent::EndAirDash()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AirDash End"));
 
-	TagContainer->RemoveTag(AirDashTag);
+	RemoveTag(AirDashTag);
 }
 
 /*---*/
@@ -477,7 +557,6 @@ void UParkourComponent::DoVault()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Vaulting !!!"));
 
-	OnVaultMotionWarping.Broadcast();
 }
 
 
@@ -491,11 +570,6 @@ void UParkourComponent::DoHang()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Hang !!!"));
 }
-
-/// <summary>
-/// //////////////////////////////////
-/// </summary>
-
 
 bool UParkourComponent::CanSliding()
 {
@@ -527,79 +601,168 @@ bool UParkourComponent::CanSliding()
 	return false;
 }
 
-bool UParkourComponent::CheckHitWall()
+/*
+* Hang & Climb Up
+*/
+
+void UParkourComponent::TraceLedge(float InitialZOffset, float TraceDistance, float TraceVertical)
 {
-	/*if (!Player || !PlayerMovement) return;
-
-	if (PlayerMovement->IsFalling())
+	
+	// Check for Ledge.(Horizontal)
+	for (int i = 0; i < 10; i++)
 	{
-		FHitResult HitResult;
-		FVector StartLocation = Player->GetActorLocation();
-		FVector EndLocation = StartLocation + Player->GetActorForwardVector() * 100.f;
+		FHitResult HitResult_H;
+		float ZOffset = InitialZOffset + (i * TraceVertical);
+		FVector StartLocation = Player->GetActorLocation() + FVector(0.f, 0.f, ZOffset);
+		FVector EndLocation = StartLocation + (Player->GetActorForwardVector() * TraceDistance);
 
-		// "ECollisionChannel::ECC_GameTraceChannel1" is Custom "Jump Wall" Channel
-		bool bHitWall = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECollisionChannel::ECC_GameTraceChannel1);
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(Player);
+		float SphereRadius = 10.f;
+		bool bHorizontalHit = GetWorld()->SweepSingleByChannel(HitResult_H, StartLocation, EndLocation, FQuat::Identity, ECollisionChannel::ECC_GameTraceChannel1, FCollisionShape::MakeSphere(SphereRadius), Params);
 
-		if (bHitWall) // 벽 점프 상태 활성화
+		DrawDebugSphere(GetWorld(), HitResult_H.Location, SphereRadius, 12, FColor::Blue, false, 2.0f);
+
+		// Check for Surface. (Vertical)
+		if (bHorizontalHit)
 		{
+			FHitResult HitResult_V;
+			bool bVerticalHit = GetWorld()->SweepSingleByChannel(HitResult_V, HitResult_H.ImpactPoint + FVector(0.f, 0.f, 20.f), HitResult_H.ImpactPoint, FQuat::Identity, ECollisionChannel::ECC_GameTraceChannel1, FCollisionShape::MakeSphere(SphereRadius), Params);
 
-			bIsWallJump = true;
+			DrawDebugSphere(GetWorld(), HitResult_V.Location, SphereRadius, 12, FColor::Yellow, false, 2.0f);
 
-			SlowJumpToLand();
+			// if Distance is 0, the trace started inside an wall (InitialOverlap).
+			if (bVerticalHit && HitResult_V.Distance > 0)
+			{
+				bLedgeDetected = true;
+				LedgeLocation = HitResult_V.ImpactPoint;
+				LedgeNormal = HitResult_H.ImpactNormal;
 
-			DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 2.f, 0, 1.f);
+				return;
+			}
+		}
+	}
+
+	bLedgeDetected = false;
+	LedgeLocation = FVector(0.f,0.f,0.f);
+	LedgeNormal = FVector(0.f, 0.f, 0.f);
+
+	return;
+}
+
+void UParkourComponent::HangOnLedge()
+{
+	FTimerHandle TimerHandle;
+
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::CheckIfBelowLedgeHasSurface, 0.01f, false);
+
+	UCapsuleComponent* CapsuleComponent = Player->GetCapsuleComponent();
+	float CapsuleHalfHeight = CapsuleComponent->GetScaledCapsuleHalfHeight();
+
+	// 1. 플레이어가 벽에 붙어 있을 z 위치 (팔로 매달리고 있어야 하므로 LedgeLocation보다 조금 아래로 내려야한다.)
+	FVector HeightLocation = LedgeLocation - (0.f, 0.f, CapsuleHalfHeight + 100.f);
+
+	// 2. 벽 표면의 법선 벡터를 바탕으로 회전벡터 생성
+	FRotator LedgeRotation = UKismetMathLibrary::MakeRotFromX(LedgeNormal);
+
+	// 3. 벽과 플레이어사이 거리 설정 : 몸은 벽과 조금 떨어져 있다.(48만큼 떨어뜨림)
+	FVector AwayLocation = UKismetMathLibrary::GetForwardVector(LedgeRotation) * 48.f;
+
+	// 4. 위치 계산
+	FVector HangLocation = HeightLocation + AwayLocation;
+
+	// 5. 회전 계산 : 플레이어는 벽의 법선벡터와 반대방향으로 바라봐야 한다.
+	FRotator HangRotation = LedgeRotation + FRotator(0.f, -180.f, 0.f);
+
+	
+	Player->SetActorRotation(HangRotation);
+
+	if (!Movement->IsFalling())
+	{
+		Movement->SetMovementMode(EMovementMode::MOVE_Flying);
+		if (!bIsOnLedge)
+		{
+			UMotionWarpingComponent* WarpComponent = Player->GetMotionWarpingComponent();
+
+			WarpComponent->AddOrUpdateWarpTargetFromLocationAndRotation("LedgePosition", HangLocation, HangRotation);
+
+			UAnimInstance* AnimInstance = Player->GetMesh()->GetAnimInstance();
+
+			if (bBelowLedgeHasSurfaceL)
+			{
+				AnimInstance->Montage_Play(IdleToBracedHang);
+			}
+			else
+			{
+				AnimInstance->Montage_Play(IdleToFreeHang);
+			}
+
+			//bIsOnLedge = true;
+
+			//Movement->StopMovementImmediately();
 		}
 		else
 		{
-			bIsWallJump = false;
+			SetFlying(HangLocation,HangRotation);
 		}
 	}
-	else // 땅에 닿으면 벽 점프 상태 해제
+	else
 	{
-		bIsWallJump = false;
+		SetFlying(HangLocation, HangRotation);
 	}
-	*/
-	return false;
 }
 
-bool UParkourComponent::IsWallJump()
+
+void UParkourComponent::CheckIfBelowLedgeHasSurface()
 {
-	//UE_LOG(LogTemp, Warning, TEXT("Wall Jump %d"), bIsWallJump);
-	//return bIsWallJump;
-	return false;
+	USkeletalMeshComponent* Mesh = Player->GetMesh();
+
+	FHitResult HitResultL;
+	FVector StartLocationL = Mesh->GetComponentLocation() + FVector(25.f, 0.f, 70.f);
+	FVector EndLocationL = StartLocationL + (Player->GetActorForwardVector() * 80.f);
+	bBelowLedgeHasSurfaceL = GetWorld()->LineTraceSingleByChannel(HitResultL, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
+	DrawDebugLine(GetWorld(), StartLocationL, EndLocationL, FColor::Red, false, 2.f, 0, 1.f);
+
+	FHitResult HitResultR;
+	FVector StartLocationR = Mesh->GetComponentLocation() + FVector(-25.f, 0.f, 70.f);
+	FVector EndLocationR = StartLocationR + (Player->GetActorForwardVector() * 80.f);
+	bBelowLedgeHasSurfaceR = GetWorld()->LineTraceSingleByChannel(HitResultR, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
+	DrawDebugLine(GetWorld(), StartLocationR, EndLocationR, FColor::Red, false, 2.f, 0, 1.f);
+
+	UE_LOG(LogTemp, Warning, TEXT("Right Foot Surface is %f"), (float)bBelowLedgeHasSurfaceR);
 }
 
-void UParkourComponent::DoWallJump()
+void UParkourComponent::SetFlying(FVector HangLocation, FRotator HangRotation)
 {
-	/*
-	UE_LOG(LogTemp, Warning, TEXT("Is Wall Jumping"));
-	
-	const FVector ForwardDir = Player->GetActorForwardVector();
-	FVector NewDir = ForwardDir * 1000.f + (0.f, 0.f, 1000.f);
-	Player->LaunchCharacter(NewDir, true, true);
+	UCapsuleComponent* CapsuleComponent = Player->GetCapsuleComponent();
 
-	FRotator NewRotation = Player->GetActorRotation();
-	NewRotation.Yaw += 180.f;
-	Player->SetActorRotation(NewRotation);
-	*/
+	FVector TargetLocation = HangLocation + (0.f, 0.f, CapsuleComponent->GetScaledCapsuleHalfHeight());
+
+	Player->SetActorLocationAndRotation(TargetLocation, HangRotation);
+
+	Movement->SetMovementMode(EMovementMode::MOVE_Flying);
+
+	bIsOnLedge = true;
+
+	Movement->StopMovementImmediately();
 }
 
-void UParkourComponent::SlowJumpToLand()
+void UParkourComponent::SetIsOnLedge(bool Value)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("SlowJumpToLand"));
-	/*
-	float WallSlideSpeed = -300.f;
-
-	FVector CurrentVelocity = PlayerMovement->Velocity;
-	
-	CurrentVelocity.Z = FMath::Max(CurrentVelocity.Z, WallSlideSpeed);
-	PlayerMovement->Velocity = CurrentVelocity;
-	*/
+	bIsOnLedge = Value;
 }
 
+bool UParkourComponent::GetIsOnLedge()
+{
+	return bIsOnLedge;
+}
 
+bool UParkourComponent::GetBelowLedgeHasSurfaceR()
+{
+	return bBelowLedgeHasSurfaceR;
+}
 
-
-
-
-
+bool UParkourComponent::GetBelowLedgeHasSurfaceL()
+{
+	return bBelowLedgeHasSurfaceL;
+}

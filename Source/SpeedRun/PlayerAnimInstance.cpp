@@ -4,6 +4,8 @@
 #include "PlayerAnimInstance.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "KismetAnimationLibrary.h"
+#include "ParkourComponent.h"
 
 void UPlayerAnimInstance::NativeInitializeAnimation()
 {
@@ -55,8 +57,40 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	* clamp the value between - and + 45 degrees so that backwards animations do not play when turning around, 
 	* but running into wall looks better.
 	*/
-	float CalculatedDirection = CalculateDirection(Velocity, Character->GetActorRotation());
+	float CalculatedDirection = UKismetAnimationLibrary::CalculateDirection(Velocity, Character->GetActorRotation());
 	float ClampCalculatedDirection = FMath::Clamp(CalculatedDirection, -45.0f, 45.0f);
 	Direction = MovementComponent->bOrientRotationToMovement ? ClampCalculatedDirection : CalculatedDirection;
 
+
+	/*
+	* 
+	*/
+	bIsCrouching = MovementComponent->IsCrouching();
+
+	ASpeedRunCharacter* Player = Cast<ASpeedRunCharacter>(Character);
+	UParkourComponent* ParkourComponent = Player->GetParkourComponent();
+
+	bIsOnLedge = ParkourComponent->GetIsOnLedge();
+	bBelowLedgeHasSurfaceL = ParkourComponent->GetBelowLedgeHasSurfaceL();
+	bBelowLedgeHasSurfaceR = ParkourComponent->GetBelowLedgeHasSurfaceR();
+
+	// FInterpTo( T1  Current, T2 Target, T3 DeltaTime, T4 InterpSpeed )
+	LeftFootAlpha = FMath::FInterpTo(LeftFootAlpha, float(!bBelowLedgeHasSurfaceL), GetWorld()->GetDeltaSeconds(), 0.2f);
+
+	RightFootAlpha = FMath::FInterpTo(RightFootAlpha, float(!bBelowLedgeHasSurfaceR), GetWorld()->GetDeltaSeconds(), 0.2f);
+}
+
+void UPlayerAnimInstance::AnimNotify_ToHangEnd()
+{
+	ASpeedRunCharacter* Player = Cast<ASpeedRunCharacter>(Character);
+	UParkourComponent* ParkourComponent = Player->GetParkourComponent();
+	ParkourComponent->SetIsOnLedge(true);
+	bIsOnLedge = true;
+
+	if (UAnimMontage* CurrentMontage = GetCurrentActiveMontage())
+	{
+		Montage_Stop(0.2f, CurrentMontage);
+	}
+
+	
 }

@@ -13,6 +13,34 @@ class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
 
+DECLARE_DYNAMIC_DELEGATE(FOnParkourAnimEndedDelegate);
+
+USTRUCT(BlueprintType)
+struct FParkourActionPayload
+{
+	GENERATED_BODY()
+
+public:
+	// 실행할 몽타주
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAnimMontage* AnimMontage = nullptr;
+
+	// 모션 워핑 타겟 이름 (예: "SlideTarget", "VaultTarget")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName TargetName = NAME_None;
+
+	// 워핑할 목표 위치
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector TargetLocation = FVector::ZeroVector;
+
+	// 워핑할 목표 회전
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRotator TargetRotation = FRotator::ZeroRotator;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FOnParkourAnimEndedDelegate OnParkourAnimEndedDelegate;
+
+};
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -58,7 +86,14 @@ public:
 	/** Constructor */
 	ASpeedRunCharacter();	
 	
+	UFUNCTION(BlueprintCallable, Category = "Parkour|Anim")
+	void ExecuteParkourDelegate(const FOnParkourAnimEndedDelegate& DelegateToCall);
 
+	UFUNCTION()
+	UMotionWarpingComponent* GetMotionWarpingComponent();
+
+	UFUNCTION()
+	UParkourComponent* GetParkourComponent();
 
 protected:
 
@@ -95,13 +130,9 @@ public:
 	virtual void DoLook(float Yaw, float Pitch);
 
 
-
-
-protected:
-	FGameplayTagContainer* GameplayTagContainer;
-
 public:
-	FGameplayTagContainer* GetTagContainer();
+	UFUNCTION(BlueprintImplementableEvent, Category = "Parkour|Anim")
+	void PlayMotionWarping(FParkourActionPayload ParkourActionPayload);
 
 };
 
