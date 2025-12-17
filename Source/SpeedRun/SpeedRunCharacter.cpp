@@ -104,8 +104,15 @@ void ASpeedRunCharacter::Move(const FInputActionValue& Value)
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-	// route the input
-	DoMove(MovementVector.X, MovementVector.Y);
+	if (ParkourComponent && ParkourComponent->GetIsOnLedge())
+	{
+		ParkourComponent->HandleLedgeInput(MovementVector);
+	}
+	else
+	{
+		
+		DoMove(MovementVector.X, MovementVector.Y);
+	}
 }
 
 void ASpeedRunCharacter::Look(const FInputActionValue& Value)
@@ -116,12 +123,6 @@ void ASpeedRunCharacter::Look(const FInputActionValue& Value)
 	// route the input
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
 }
-
-
-
-
-
-
 
 void ASpeedRunCharacter::DoMove(float Right, float Forward)
 {

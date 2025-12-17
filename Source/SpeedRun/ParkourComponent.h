@@ -333,4 +333,24 @@ public:
 
 	UFUNCTION()
 	bool GetBelowLedgeHasSurfaceL();
+
+public:
+	UFUNCTION()
+	void HandleLedgeInput(FVector2D MovementVector);
+
+	UFUNCTION()
+	void DoHangUp();
+
+	UFUNCTION()
+	void DoShimmy(float Value);
+
+	bool bCanMove;
+
+	UPROPERTY(EditAnywhere, Category = "Anim")
+	UAnimMontage* ClimbUp;
+
+	bool bOverrideFootIK;
+
+	UFUNCTION()
+	bool GetOverrideFootIK();
 };

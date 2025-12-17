@@ -73,6 +73,8 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsOnLedge = ParkourComponent->GetIsOnLedge();
 	bBelowLedgeHasSurfaceL = ParkourComponent->GetBelowLedgeHasSurfaceL();
 	bBelowLedgeHasSurfaceR = ParkourComponent->GetBelowLedgeHasSurfaceR();
+	bOverrideFootIK = ParkourComponent->GetOverrideFootIK();
+	OverrideFootIK = ParkourComponent->GetOverrideFootIK();
 
 	// FInterpTo( T1  Current, T2 Target, T3 DeltaTime, T4 InterpSpeed )
 	LeftFootAlpha = FMath::FInterpTo(LeftFootAlpha, float(!bBelowLedgeHasSurfaceL), GetWorld()->GetDeltaSeconds(), 0.2f);
@@ -89,8 +91,25 @@ void UPlayerAnimInstance::AnimNotify_ToHangEnd()
 
 	if (UAnimMontage* CurrentMontage = GetCurrentActiveMontage())
 	{
+		/* 
+		* 애니메이션이 전부 끝나고 HangIdle로 전환되는 오류 방지.
+		* IdleToHang 애니메이션 실행 도중 서서히 Stop하고 HangIdle이 실행되도록 하기 위함.
+		*/
 		Montage_Stop(0.2f, CurrentMontage);
 	}
 
 	
+}
+void UPlayerAnimInstance::AnimNotify_ClimbUpEnd()
+{
+	
+
+	ASpeedRunCharacter* Player = Cast<ASpeedRunCharacter>(Character);
+	Player->SetActorEnableCollision(true);
+
+	Player->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Falling);
+
+	//Player->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+
+	Player->GetParkourComponent()->bCanMove = true;
 }

@@ -654,7 +654,11 @@ void UParkourComponent::HangOnLedge()
 {
 	FTimerHandle TimerHandle;
 
+	bCanMove = false;
+
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::CheckIfBelowLedgeHasSurface, 0.01f, false);
+
+	bOverrideFootIK = true;
 
 	UCapsuleComponent* CapsuleComponent = Player->GetCapsuleComponent();
 	float CapsuleHalfHeight = CapsuleComponent->GetScaledCapsuleHalfHeight();
@@ -696,10 +700,6 @@ void UParkourComponent::HangOnLedge()
 			{
 				AnimInstance->Montage_Play(IdleToFreeHang);
 			}
-
-			//bIsOnLedge = true;
-
-			//Movement->StopMovementImmediately();
 		}
 		else
 		{
@@ -765,4 +765,66 @@ bool UParkourComponent::GetBelowLedgeHasSurfaceR()
 bool UParkourComponent::GetBelowLedgeHasSurfaceL()
 {
 	return bBelowLedgeHasSurfaceL;
+}
+
+void UParkourComponent::HandleLedgeInput(FVector2D MovementVector)
+{
+	if (MovementVector.Y > 0.f)
+	{
+		DoHangUp();
+	}
+	else if (MovementVector.X != 0.f)
+	{
+		DoShimmy(MovementVector.X);
+	}
+}
+
+void UParkourComponent::DoHangUp()
+{
+	UCapsuleComponent* CapsuleComp = Player->GetCapsuleComponent();
+	FHitResult HitResult;
+
+	FVector FrontVector = Player->GetActorLocation() + (Player->GetActorForwardVector() * 85.f);
+	float Height = CapsuleComp->GetScaledCapsuleHalfHeight() + 100.f;
+	FVector TraceVector = FrontVector + FVector(0.f, 0.f, Height);
+
+	bool bHasTopSurface = GetWorld()->SweepSingleByChannel(HitResult, TraceVector, TraceVector, FQuat::Identity, ECollisionChannel::ECC_GameTraceChannel1, FCollisionShape::MakeSphere(25.f));
+	DrawDebugCapsule(GetWorld(), HitResult.ImpactPoint, 80.f, 25.f, FQuat::Identity, FColor::Green, false, 2.0f);
+
+	if (!bHasTopSurface)
+	{
+		bIsOnLedge = false;
+
+		Player->SetActorEnableCollision(false);
+		//Movement->SetMovementMode(EMovementMode::MOVE_Falling);
+
+		FHitResult HitResultSurface;
+		bool bHitSurface = GetWorld()->LineTraceSingleByChannel(HitResultSurface, TraceVector, TraceVector + FVector(0.f, 0.f, -100.f), ECollisionChannel::ECC_GameTraceChannel1);
+		DrawDebugLine(GetWorld(), TraceVector, TraceVector + FVector(0.f, 0.f, -100.f), FColor::Purple, false, 2.f);
+
+		FVector WorldLocation = CapsuleComp->GetComponentLocation();
+		FVector TargetLocation = WorldLocation + FVector(0.f, 0.f, 20.f);
+		FRotator TargetRotator = CapsuleComp->GetComponentRotation();
+
+		Player->SetActorLocationAndRotation(TargetLocation, TargetRotator);
+		
+
+		UMotionWarpingComponent* WarpComponent = Player->GetMotionWarpingComponent();
+		WarpComponent->AddOrUpdateWarpTargetFromLocationAndRotation("ClimbPosition", HitResultSurface.Location, Player->GetActorRotation());
+
+		
+
+		UAnimInstance* AnimInstance = Player->GetMesh()->GetAnimInstance();
+		AnimInstance->Montage_Play(ClimbUp);		
+	}
+}
+
+void UParkourComponent::DoShimmy(float Value)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Shimmy : %f"), Value);
+}
+
+bool UParkourComponent::GetOverrideFootIK()
+{
+	return bOverrideFootIK;
 }

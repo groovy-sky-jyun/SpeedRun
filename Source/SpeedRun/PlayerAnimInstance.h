@@ -72,9 +72,16 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
 	float RightFootAlpha;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	float OverrideFootIK;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	bool bOverrideFootIK;
 
 public:
 	UFUNCTION()
 	void AnimNotify_ToHangEnd();
 
+	UFUNCTION()
+	void AnimNotify_ClimbUpEnd();
 };
