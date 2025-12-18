@@ -37,7 +37,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	TObjectPtr<UCharacterMovementComponent> MovementComponent;
 
+
 public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+	bool bCanMove;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Movement")
 	FVector Velocity;
@@ -54,29 +57,39 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Direction;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour")
 	bool bIsCrouching;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	bool bIsOnLedge;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	bool bBelowLedgeHasSurfaceL;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	bool bBelowLedgeHasSurfaceR;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	float LeftFootAlpha;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	float RightFootAlpha;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	float OverrideFootIK;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ledge")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	bool bOverrideFootIK;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
+	FVector HandIKLocationL;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
+	FVector HandIKLocationR;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
+	float HandIKTargetAlpha;
+
 
 public:
 	UFUNCTION()

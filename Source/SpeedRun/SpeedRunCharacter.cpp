@@ -110,7 +110,6 @@ void ASpeedRunCharacter::Move(const FInputActionValue& Value)
 	}
 	else
 	{
-		
 		DoMove(MovementVector.X, MovementVector.Y);
 	}
 }

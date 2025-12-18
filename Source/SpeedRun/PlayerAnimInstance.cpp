@@ -80,6 +80,15 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	LeftFootAlpha = FMath::FInterpTo(LeftFootAlpha, float(!bBelowLedgeHasSurfaceL), GetWorld()->GetDeltaSeconds(), 0.2f);
 
 	RightFootAlpha = FMath::FInterpTo(RightFootAlpha, float(!bBelowLedgeHasSurfaceR), GetWorld()->GetDeltaSeconds(), 0.2f);
+
+	bCanMove = ParkourComponent->GetCanMove();
+
+	HandIKLocationL = ParkourComponent->GetHandIKLocationL();
+
+	HandIKLocationR = ParkourComponent->GetHandIKLocationR();
+
+	HandIKTargetAlpha = FMath::FInterpTo(HandIKTargetAlpha, ParkourComponent->GetHandIKTargetAlpha(), GetWorld()->GetDeltaSeconds(), 10.f);
+
 }
 
 void UPlayerAnimInstance::AnimNotify_ToHangEnd()
@@ -111,5 +120,6 @@ void UPlayerAnimInstance::AnimNotify_ClimbUpEnd()
 
 	//Player->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 
-	Player->GetParkourComponent()->bCanMove = true;
+	Player->GetParkourComponent()->SetCanMove(true);
+	bCanMove = true;
 }

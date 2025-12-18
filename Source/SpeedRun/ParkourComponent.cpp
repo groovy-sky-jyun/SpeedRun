@@ -37,7 +37,8 @@ void UParkourComponent::BeginPlay()
 	if (Player)
 	{
 		Movement = Player->GetCharacterMovement();
-	
+		Capsule = Player->GetCapsuleComponent();
+
 		if (Movement)
 		{
 			// 1. 앉기 활성화
@@ -48,6 +49,10 @@ void UParkourComponent::BeginPlay()
 			// 2. 앉았을 때 캡슐 높이, 속도 설정
 			Movement->MaxWalkSpeedCrouched = MaxCrouchSpeed;
 			Movement->CrouchedHalfHeight = CrouchedHalfHeight;
+		}
+		if (Capsule)
+		{
+			CapsuleHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
 		}
 		
 	}
@@ -218,18 +223,15 @@ bool UParkourComponent::TryParkourJump()
 {
 	if (!bIsOnLedge)
 	{
-		float InitialZOffset = Movement->IsFalling() ? 50.f : 25.f;
-		float TraceVertical = Movement->IsFalling() ? 75.f : 10.f;
-		
-		TraceLedge(InitialZOffset, 100.f, TraceVertical);
+		float InitialZOffset = Movement->IsFalling() ? InitialZOffset_Falling : InitialZOffset_Grounded;
+		float TraceVertical = Movement->IsFalling() ? TraceVertical_Falling : TraceVertical_Grounded;
 
-		if (!bLedgeDetected)
+		if (!CheckLedgeDetect(InitialZOffset, 100.f, TraceVertical))
 		{
 			Player->Jump();
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Hang On Ledge"));
 			HangOnLedge();
 		}
 	}
@@ -402,7 +404,7 @@ void UParkourComponent::EndAirDash()
 /// </summary>
 void UParkourComponent::DoJump()
 {
-	
+
 	int LastHitIndex = 0;
 	FVector HitLocation;
 	FHitResult HitResult;
@@ -444,8 +446,8 @@ void UParkourComponent::DoMiddleJump(const FVector& HitLocation)
 	int LastHitIndex = 0;
 	FHitResult VerticalHitResult;
 
-	float CapsuleRadius = 5.0f;
-	float CapsuleHalfHeight = 10.0;
+	float TraceRadius = 5.0f;
+	float TraceHalfHeight = 10.0;
 
 	/* Create a Traces to Check the Block Vertical */
 	for (int i = 0; i < TraceCount_BlockVertical; i++)
@@ -456,8 +458,8 @@ void UParkourComponent::DoMiddleJump(const FVector& HitLocation)
 		FVector EndLocation = StartLocation + FVector(0.f, 0.f, -50.f);
 
 		// test 후 channel change
-		bool bHitBlock = GetWorld()->SweepSingleByChannel(HitResult, StartLocation, EndLocation, FQuat::Identity, ECollisionChannel::ECC_GameTraceChannel1, FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight));
-		DrawDebugCapsule(GetWorld(), HitResult.Location, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, FColor::Blue, false, 2.f, 0, 1.f);
+		bool bHitBlock = GetWorld()->SweepSingleByChannel(HitResult, StartLocation, EndLocation, FQuat::Identity, ECollisionChannel::ECC_GameTraceChannel1, FCollisionShape::MakeCapsule(TraceRadius, TraceHalfHeight));
+		DrawDebugCapsule(GetWorld(), HitResult.Location, TraceHalfHeight, TraceRadius, FQuat::Identity, FColor::Blue, false, 2.f, 0, 1.f);
 		
 		if (HitResult.bStartPenetrating) // The trace started in penetration
 		{
@@ -605,7 +607,7 @@ bool UParkourComponent::CanSliding()
 * Hang & Climb Up
 */
 
-void UParkourComponent::TraceLedge(float InitialZOffset, float TraceDistance, float TraceVertical)
+bool UParkourComponent::CheckLedgeDetect(float InitialZOffset, float TraceDistance, float TraceVertical)
 {
 	
 	// Check for Ledge.(Horizontal)
@@ -634,53 +636,49 @@ void UParkourComponent::TraceLedge(float InitialZOffset, float TraceDistance, fl
 			// if Distance is 0, the trace started inside an wall (InitialOverlap).
 			if (bVerticalHit && HitResult_V.Distance > 0)
 			{
-				bLedgeDetected = true;
-				LedgeLocation = HitResult_V.ImpactPoint;
-				LedgeNormal = HitResult_H.ImpactNormal;
+				DetectLedgeLocation = HitResult_V.ImpactPoint;
+				DetectLedgeNormal = HitResult_H.ImpactNormal;
 
-				return;
+				return true;
 			}
 		}
 	}
 
-	bLedgeDetected = false;
-	LedgeLocation = FVector(0.f,0.f,0.f);
-	LedgeNormal = FVector(0.f, 0.f, 0.f);
+	DetectLedgeLocation = FVector(0.f,0.f,0.f);
+	DetectLedgeNormal = FVector(0.f, 0.f, 0.f);
 
-	return;
+	return false;
 }
 
 void UParkourComponent::HangOnLedge()
 {
-	FTimerHandle TimerHandle;
+	CheckLedfeSurfaceHandle;
 
 	bCanMove = false;
 
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UParkourComponent::CheckIfBelowLedgeHasSurface, 0.01f, false);
-
 	bOverrideFootIK = true;
 
-	UCapsuleComponent* CapsuleComponent = Player->GetCapsuleComponent();
-	float CapsuleHalfHeight = CapsuleComponent->GetScaledCapsuleHalfHeight();
-
 	// 1. 플레이어가 벽에 붙어 있을 z 위치 (팔로 매달리고 있어야 하므로 LedgeLocation보다 조금 아래로 내려야한다.)
-	FVector HeightLocation = LedgeLocation - (0.f, 0.f, CapsuleHalfHeight + 100.f);
+	FVector HeightLocation = DetectLedgeLocation - (0.f, 0.f, CapsuleHalfHeight + 90.f);
 
 	// 2. 벽 표면의 법선 벡터를 바탕으로 회전벡터 생성
-	FRotator LedgeRotation = UKismetMathLibrary::MakeRotFromX(LedgeNormal);
+	FRotator LedgeRotation = UKismetMathLibrary::MakeRotFromX(DetectLedgeNormal);
 
-	// 3. 벽과 플레이어사이 거리 설정 : 몸은 벽과 조금 떨어져 있다.(48만큼 떨어뜨림)
-	FVector AwayLocation = UKismetMathLibrary::GetForwardVector(LedgeRotation) * 48.f;
+	// 3. 벽과 플레이어사이 거리 설정 
+	FVector AwayLocation = UKismetMathLibrary::GetForwardVector(LedgeRotation) * -25.f;
 
-	// 4. 위치 계산
+	// 4. 최종 위치 계산
 	FVector HangLocation = HeightLocation + AwayLocation;
 
-	// 5. 회전 계산 : 플레이어는 벽의 법선벡터와 반대방향으로 바라봐야 한다.
+	// 5. 최종 회전 계산 : 플레이어는 벽의 법선벡터와 반대방향으로 바라봐야 한다.
 	FRotator HangRotation = LedgeRotation + FRotator(0.f, -180.f, 0.f);
 
-	
+	GetWorld()->GetTimerManager().SetTimer(CheckLedfeSurfaceHandle, this, &UParkourComponent::CheckIfBelowLedgeHasSurface, 0.01f, false);
+
 	Player->SetActorRotation(HangRotation);
 
+
+	
 	if (!Movement->IsFalling())
 	{
 		Movement->SetMovementMode(EMovementMode::MOVE_Flying);
@@ -710,6 +708,16 @@ void UParkourComponent::HangOnLedge()
 	{
 		SetFlying(HangLocation, HangRotation);
 	}
+
+	bIsOnLedge = true;
+
+	Movement->StopMovementImmediately();
+
+	HandIKTargetAlpha = 1.0f;
+
+	GetWorld()->GetTimerManager().SetTimer(LedgeIKHandle, this, &UParkourComponent::LedgeHandIK, 0.01f, true);
+
+
 }
 
 
@@ -732,19 +740,72 @@ void UParkourComponent::CheckIfBelowLedgeHasSurface()
 	UE_LOG(LogTemp, Warning, TEXT("Right Foot Surface is %f"), (float)bBelowLedgeHasSurfaceR);
 }
 
+void UParkourComponent::LedgeHandIK()
+{
+	bool IsFindHandIKL = FindLedgeHandIKLocation(-25.f, HandIKLocationL);
+
+	bool IsFindHandIKR = FindLedgeHandIKLocation(25.f, HandIKLocationR);
+
+	if (!(IsFindHandIKL && IsFindHandIKR))
+	{
+		HandIKTargetAlpha = 0.f;
+	}
+
+}
+
+//"This is for later episodes as we will need to re-hang onto the wall once we rotate around corners..."
 void UParkourComponent::SetFlying(FVector HangLocation, FRotator HangRotation)
 {
-	UCapsuleComponent* CapsuleComponent = Player->GetCapsuleComponent();
-
-	FVector TargetLocation = HangLocation + (0.f, 0.f, CapsuleComponent->GetScaledCapsuleHalfHeight());
+	FVector TargetLocation = HangLocation + (0.f, 0.f, CapsuleHalfHeight);
 
 	Player->SetActorLocationAndRotation(TargetLocation, HangRotation);
 
 	Movement->SetMovementMode(EMovementMode::MOVE_Flying);
+}
 
-	bIsOnLedge = true;
+bool UParkourComponent::FindLedgeHandIKLocation(float RightOffset, FVector& Target)
+{
+	USkeletalMeshComponent* Mesh = Player->GetMesh();
 
-	Movement->StopMovementImmediately();
+	FHitResult HitResult;
+
+	float ZOffset = CapsuleHalfHeight + 85.f;
+
+	FVector HeightVector = Mesh->GetComponentLocation() + FVector(0.f, 0.f, ZOffset);
+	FVector ForwardVector = Player->GetActorForwardVector() * 45.f;
+	FVector RightdVector = Player->GetActorRightVector() * RightOffset;
+
+	FVector TargetLocation = HeightVector + ForwardVector + RightdVector;
+
+	FCollisionQueryParams Params;
+
+	Params.AddIgnoredActor(Player);
+
+	float SphereRadius = 15.f;
+
+	bool bHit = GetWorld()->SweepSingleByChannel(HitResult, TargetLocation, TargetLocation, FQuat::Identity, ECollisionChannel::ECC_GameTraceChannel1, FCollisionShape::MakeSphere(SphereRadius), Params);
+
+	DrawDebugSphere(GetWorld(), HitResult.Location, SphereRadius, 12, FColor::Blue, false, 2.0f);
+
+	if (bHit)
+	{
+		Target = HitResult.Location;
+
+		return true;
+	}
+
+	return false;
+}
+
+
+bool UParkourComponent::GetCanMove()
+{
+	return bCanMove;
+}
+
+void UParkourComponent::SetCanMove(bool Value)
+{
+	bCanMove = Value;
 }
 
 void UParkourComponent::SetIsOnLedge(bool Value)
@@ -808,14 +869,18 @@ void UParkourComponent::DoHangUp()
 
 		Player->SetActorLocationAndRotation(TargetLocation, TargetRotator);
 		
-
+		if (LedgeIKHandle.IsValid())
+		{
+			LedgeIKHandle.Invalidate();
+		}
+		
+		CheckLedfeSurfaceHandle.Invalidate();
 		UMotionWarpingComponent* WarpComponent = Player->GetMotionWarpingComponent();
 		WarpComponent->AddOrUpdateWarpTargetFromLocationAndRotation("ClimbPosition", HitResultSurface.Location, Player->GetActorRotation());
 
-		
-
 		UAnimInstance* AnimInstance = Player->GetMesh()->GetAnimInstance();
-		AnimInstance->Montage_Play(ClimbUp);		
+		AnimInstance->Montage_Play(ClimbUp);
+		
 	}
 }
 
@@ -827,4 +892,19 @@ void UParkourComponent::DoShimmy(float Value)
 bool UParkourComponent::GetOverrideFootIK()
 {
 	return bOverrideFootIK;
+}
+
+FVector UParkourComponent::GetHandIKLocationL()
+{
+	return HandIKLocationL;
+}
+
+FVector UParkourComponent::GetHandIKLocationR()
+{
+	return HandIKLocationR;
+}
+
+float UParkourComponent::GetHandIKTargetAlpha()
+{
+	return HandIKTargetAlpha;
 }

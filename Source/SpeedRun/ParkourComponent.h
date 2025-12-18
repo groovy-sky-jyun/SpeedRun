@@ -38,6 +38,15 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UCharacterMovementComponent> Movement;
 
+	UPROPERTY()
+	TObjectPtr<UCapsuleComponent> Capsule;
+
+	float CapsuleHalfHeight;
+
+	float DefaultCrouchedHalfHeight;
+
+
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameplayTag")
 	FGameplayTagContainer ParkourTags;
 
@@ -273,7 +282,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Anim")
 	float CrouchedHalfHeight = 60.f;
 
-	float DefaultCrouchedHalfHeight;
+
 
 public:
 	UFUNCTION()
@@ -286,41 +295,36 @@ public:
 	bool HasTag(FGameplayTag Tag);
 
 
-////// Hang & Climb up
-public:
+
+/// <summary>
+/// //////////////////////////12.18
+/// </summary>
+private:
+	bool bCanMove = false;
+
 	bool bIsOnLedge = false;
 
-	bool bLedgeDetected = false;
-	FVector LedgeLocation;
-	FVector LedgeNormal;
-
-	// Check for a hangable ledge.
-	UFUNCTION()
-	void TraceLedge(float InitialZOffset, float TraceDistance, float TraceVertical);
-
-public:
-	UFUNCTION()
-	void HangOnLedge();
-		
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ledge")
 	bool bBelowLedgeHasSurfaceL = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ledge")
 	bool bBelowLedgeHasSurfaceR = false;
 
-	UFUNCTION()
-	void CheckIfBelowLedgeHasSurface();
+	bool bOverrideFootIK;
+
+	UPROPERTY(VisibleAnywhere, Category = "Hang|IK")
+	FVector HandIKLocationL;
+
+	UPROPERTY(VisibleAnywhere, Category = "Hang|IK")
+	FVector HandIKLocationR;
+
+	float HandIKTargetAlpha;
+
 
 public:
-	UPROPERTY(EditAnywhere, Category = "Anim")
-	UAnimMontage* IdleToBracedHang;
-
-	UPROPERTY(EditAnywhere, Category = "Anim")
-	UAnimMontage* IdleToFreeHang;
+	UFUNCTION()
+	bool GetCanMove();
 
 	UFUNCTION()
-	void SetFlying(FVector HangLocation, FRotator HangRotation);
+	void SetCanMove(bool Value);
 
 	UFUNCTION()
 	void SetIsOnLedge(bool Value);
@@ -334,6 +338,58 @@ public:
 	UFUNCTION()
 	bool GetBelowLedgeHasSurfaceL();
 
+	UFUNCTION()
+	bool GetOverrideFootIK();
+
+	UFUNCTION()
+	FVector GetHandIKLocationL();
+
+	UFUNCTION()
+	FVector GetHandIKLocationR();
+
+	UFUNCTION()
+	float GetHandIKTargetAlpha();
+
+
+protected:
+	UFUNCTION()
+	bool CheckLedgeDetect(float InitialZOffset, float TraceDistance, float TraceVertical);
+
+	UFUNCTION()
+	void HangOnLedge();
+
+	UFUNCTION()
+	void CheckIfBelowLedgeHasSurface();
+
+	UFUNCTION()
+	void LedgeHandIK();
+
+
+
+
+protected: // CheckLedgeDetect() Variables
+	UPROPERTY(EditAnywhere, Category = "Hang|Trace|DetectLedge")
+	float InitialZOffset_Grounded = 75.f;
+
+	UPROPERTY(EditAnywhere, Category = "Hang|Trace|DetectLedge")
+	float TraceVertical_Grounded = 10.f;
+
+	UPROPERTY(EditAnywhere, Category = "Hang|Trace|DetectLedge")
+	float InitialZOffset_Falling = 50.f;
+
+	UPROPERTY(EditAnywhere, Category = "Hang|Trace|DetectLedge")
+	float TraceVertical_Falling = 15.f;
+
+	UPROPERTY()
+	FVector DetectLedgeLocation; 
+
+	UPROPERTY()
+	FVector DetectLedgeNormal; 
+
+	FTimerHandle CheckLedfeSurfaceHandle;
+	
+	FTimerHandle LedgeIKHandle;
+
 public:
 	UFUNCTION()
 	void HandleLedgeInput(FVector2D MovementVector);
@@ -344,13 +400,21 @@ public:
 	UFUNCTION()
 	void DoShimmy(float Value);
 
-	bool bCanMove;
-
-	UPROPERTY(EditAnywhere, Category = "Anim")
-	UAnimMontage* ClimbUp;
-
-	bool bOverrideFootIK;
+	UFUNCTION()
+	void SetFlying(FVector HangLocation, FRotator HangRotation);
 
 	UFUNCTION()
-	bool GetOverrideFootIK();
+	bool FindLedgeHandIKLocation(float RightOffset, FVector& Target);
+
+
+public:
+	UPROPERTY(EditAnywhere, Category = "AnimMontage|Hang")
+	UAnimMontage* IdleToBracedHang;
+
+	UPROPERTY(EditAnywhere, Category = "AnimMontage|Hang")
+	UAnimMontage* IdleToFreeHang;
+
+	UPROPERTY(EditAnywhere, Category = "AnimMontage|Movement")
+	UAnimMontage* ClimbUp;
+
 };
