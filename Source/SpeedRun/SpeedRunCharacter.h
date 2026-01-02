@@ -64,11 +64,14 @@ class ASpeedRunCharacter : public ACharacter
 	UCameraComponent* FollowCamera;
 
 	/** Parkour movement */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UParkourComponent> ParkourComponent;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	//TObjectPtr<class UParkourComponent> ParkourComponent;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UParkourManager> ParkourComponent;
+
 	/** Motion Warping */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UMotionWarpingComponent> MotionWarpingComponent;
 
 public:
@@ -92,8 +95,11 @@ public:
 	UFUNCTION()
 	UMotionWarpingComponent* GetMotionWarpingComponent();
 
+	//UFUNCTION()
+	//UParkourComponent* GetParkourComponent();
+
 	UFUNCTION()
-	UParkourComponent* GetParkourComponent();
+	UParkourManager* GetParkourManager();
 
 protected:
 

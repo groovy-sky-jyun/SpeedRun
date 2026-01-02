@@ -11,7 +11,8 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "SpeedRun.h"
-#include "ParkourComponent.h"
+//#include "ParkourComponent.h"
+#include "ParkourManager.h"
 #include "MotionWarpingComponent.h" 
 #include "GameplayTagContainer.h"
 
@@ -52,7 +53,7 @@ ASpeedRunCharacter::ASpeedRunCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 
 	// Create Parkour Movement Component
-	ParkourComponent = CreateDefaultSubobject<UParkourComponent>(TEXT("ParkourComponent"));
+	ParkourComponent = CreateDefaultSubobject<UParkourManager>(TEXT("ParkourComponent"));
 	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarp"));
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
@@ -72,7 +73,12 @@ UMotionWarpingComponent* ASpeedRunCharacter::GetMotionWarpingComponent()
 	return MotionWarpingComponent;
 }
 
-UParkourComponent* ASpeedRunCharacter::GetParkourComponent()
+//UParkourComponent* ASpeedRunCharacter::GetParkourComponent()
+//{
+//	return ParkourComponent;
+//}
+
+UParkourManager* ASpeedRunCharacter::GetParkourManager()
 {
 	return ParkourComponent;
 }
@@ -106,7 +112,8 @@ void ASpeedRunCharacter::Move(const FInputActionValue& Value)
 
 	if (ParkourComponent && ParkourComponent->GetIsOnLedge())
 	{
-		ParkourComponent->HandleLedgeInput(MovementVector);
+		//ParkourComponent->HandleLedgeInput(MovementVector);
+		UE_LOG(LogTemp, Warning, TEXT("Shimmy"));
 	}
 	else
 	{

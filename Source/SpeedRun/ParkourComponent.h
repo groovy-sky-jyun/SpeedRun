@@ -15,6 +15,7 @@ class UCapsuleComponent;
 class UInputAction;
 struct FInputActionValue;
 struct FParkourActionPayload;
+class UParkourAction;
 
 UCLASS(Blueprintable, ClassGroup =(Custom), meta=(BlueprintSpawnableComponent))
 class SPEEDRUN_API UParkourComponent : public UActorComponent
@@ -45,6 +46,11 @@ protected:
 
 	float DefaultCrouchedHalfHeight;
 
+	UPROPERTY(EditAnywhere, Instanced, Category="ParkourActions")
+	TArray<UParkourAction*> ActionList;
+
+	UPROPERTY()
+	UParkourAction* CurrentAction;
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameplayTag")
@@ -304,9 +310,9 @@ private:
 
 	bool bIsOnLedge = false;
 
-	bool bBelowLedgeHasSurfaceL = false;
+	bool bLedgeHasFootSurfaceL = false;
 
-	bool bBelowLedgeHasSurfaceR = false;
+	bool bLedgeHasFootSurfaceR = false;
 
 	bool bOverrideFootIK;
 
@@ -333,13 +339,22 @@ public:
 	bool GetIsOnLedge();
 
 	UFUNCTION()
-	bool GetBelowLedgeHasSurfaceR();
+	bool GetLedgeHasFootSurfaceR();
 
 	UFUNCTION()
-	bool GetBelowLedgeHasSurfaceL();
+	void SetLedgeHasFootSurfaceR(bool Value);
+
+	UFUNCTION()
+	bool GetLedgeHasFootSurfaceL();
+
+	UFUNCTION()
+	void SetLedgeHasFootSurfaceL(bool Value);
 
 	UFUNCTION()
 	bool GetOverrideFootIK();
+
+	UFUNCTION()
+	void SetOverrideFootIK(bool Value);
 
 	UFUNCTION()
 	FVector GetHandIKLocationL();

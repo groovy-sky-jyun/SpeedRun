@@ -12,6 +12,7 @@
 #include "TimerManager.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "MotionWarpingComponent.h"
+#include "ParkourAction.h"
 
 // Sets default values for this component's properties
 UParkourComponent::UParkourComponent()
@@ -55,6 +56,14 @@ void UParkourComponent::BeginPlay()
 			CapsuleHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
 		}
 		
+	}
+
+	for (UParkourAction* Action : ActionList)
+	{
+		if (Action)
+		{
+			//Action->Initialize(Player, this);
+		}
 	}
 }
 
@@ -690,7 +699,7 @@ void UParkourComponent::HangOnLedge()
 
 			UAnimInstance* AnimInstance = Player->GetMesh()->GetAnimInstance();
 
-			if (bBelowLedgeHasSurfaceL)
+			if (bLedgeHasFootSurfaceL)
 			{
 				AnimInstance->Montage_Play(IdleToBracedHang);
 			}
@@ -728,16 +737,16 @@ void UParkourComponent::CheckIfBelowLedgeHasSurface()
 	FHitResult HitResultL;
 	FVector StartLocationL = Mesh->GetComponentLocation() + FVector(25.f, 0.f, 70.f);
 	FVector EndLocationL = StartLocationL + (Player->GetActorForwardVector() * 80.f);
-	bBelowLedgeHasSurfaceL = GetWorld()->LineTraceSingleByChannel(HitResultL, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
+	bLedgeHasFootSurfaceL = GetWorld()->LineTraceSingleByChannel(HitResultL, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
 	DrawDebugLine(GetWorld(), StartLocationL, EndLocationL, FColor::Red, false, 2.f, 0, 1.f);
 
 	FHitResult HitResultR;
 	FVector StartLocationR = Mesh->GetComponentLocation() + FVector(-25.f, 0.f, 70.f);
 	FVector EndLocationR = StartLocationR + (Player->GetActorForwardVector() * 80.f);
-	bBelowLedgeHasSurfaceR = GetWorld()->LineTraceSingleByChannel(HitResultR, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
+	bLedgeHasFootSurfaceR = GetWorld()->LineTraceSingleByChannel(HitResultR, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
 	DrawDebugLine(GetWorld(), StartLocationR, EndLocationR, FColor::Red, false, 2.f, 0, 1.f);
 
-	UE_LOG(LogTemp, Warning, TEXT("Right Foot Surface is %f"), (float)bBelowLedgeHasSurfaceR);
+	UE_LOG(LogTemp, Warning, TEXT("Right Foot Surface is %f"), (float)bLedgeHasFootSurfaceR);
 }
 
 void UParkourComponent::LedgeHandIK()
@@ -818,14 +827,24 @@ bool UParkourComponent::GetIsOnLedge()
 	return bIsOnLedge;
 }
 
-bool UParkourComponent::GetBelowLedgeHasSurfaceR()
+bool UParkourComponent::GetLedgeHasFootSurfaceR()
 {
-	return bBelowLedgeHasSurfaceR;
+	return bLedgeHasFootSurfaceR;
 }
 
-bool UParkourComponent::GetBelowLedgeHasSurfaceL()
+void UParkourComponent::SetLedgeHasFootSurfaceR(bool Value)
 {
-	return bBelowLedgeHasSurfaceL;
+	bLedgeHasFootSurfaceR = Value;
+}
+
+bool UParkourComponent::GetLedgeHasFootSurfaceL()
+{
+	return bLedgeHasFootSurfaceL;
+}
+
+void UParkourComponent::SetLedgeHasFootSurfaceL(bool Value)
+{
+	bLedgeHasFootSurfaceL = Value;
 }
 
 void UParkourComponent::HandleLedgeInput(FVector2D MovementVector)
@@ -892,6 +911,11 @@ void UParkourComponent::DoShimmy(float Value)
 bool UParkourComponent::GetOverrideFootIK()
 {
 	return bOverrideFootIK;
+}
+
+void UParkourComponent::SetOverrideFootIK(bool Value)
+{
+	bOverrideFootIK = Value;
 }
 
 FVector UParkourComponent::GetHandIKLocationL()

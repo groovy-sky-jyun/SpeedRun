@@ -7,7 +7,9 @@
 #include "PlayerAnimInstance.generated.h"
 
 class ACharacter;
+class ASpeedRunCharacter;
 class UCharacterMovementComponent;
+class UParkourManager;
 
 UCLASS()
 class SPEEDRUN_API UPlayerAnimInstance : public UAnimInstance
@@ -35,7 +37,13 @@ public:
 	TObjectPtr<ACharacter> Character;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-	TObjectPtr<UCharacterMovementComponent> MovementComponent;
+	TObjectPtr<UCharacterMovementComponent> Movement;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	TObjectPtr<ASpeedRunCharacter> Player;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	TObjectPtr<UParkourManager> ParkourManager;
 
 
 public:
@@ -64,19 +72,16 @@ public:
 	bool bIsOnLedge;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	bool bBelowLedgeHasSurfaceL;
+	bool bLedgeHasFootSurfaceL;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	bool bBelowLedgeHasSurfaceR;
+	bool bLedgeHasFootSurfaceR;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	float LeftFootAlpha;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	float RightFootAlpha;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	float OverrideFootIK;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	bool bOverrideFootIK;
@@ -93,7 +98,12 @@ public:
 
 public:
 	UFUNCTION()
+	void AnimNotify_ToHangBlendOut();
+
+	UFUNCTION()
 	void AnimNotify_ToHangEnd();
+
+
 
 	UFUNCTION()
 	void AnimNotify_ClimbUpEnd();
