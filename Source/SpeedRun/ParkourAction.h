@@ -53,10 +53,9 @@ protected:
 
 	float DefaultCrouchedHalfHeight;
 
+
 public:
 	virtual void Initialize(ASpeedRunCharacter* OwnerPlayer, UParkourManager* ParkourComponent);
-
-	const UWorld* GetPlayerWorld();
 
 	virtual bool CheckVisibleToAction() { return false; }
 
@@ -65,6 +64,10 @@ public:
 	virtual void OnUpdate() {};
 
 	virtual void OnEnd() {};
+
+
+public:
+	const UWorld* GetPlayerWorld();
 
 	EParkourStateType GetInputType() { return InputType; }
 };

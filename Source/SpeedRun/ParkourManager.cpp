@@ -104,23 +104,35 @@ void UParkourManager::Input_Up_End(const FInputActionValue& Value)
 
 void UParkourManager::Input_Down(const FInputActionValue& Value)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Input_Down"));
+	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Down);
 
-	CheckPlayAction(EParkourStateType::Down);
+	if (NewAction != nullptr)
+	{
+		PlayAction(NewAction);
+	}
+	
 }
 
 void UParkourManager::Sprint(const FInputActionValue& Value)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Sprint"));
+	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Sprint);
 
-	CheckPlayAction(EParkourStateType::Sprint);
+	if (NewAction != nullptr)
+	{
+		PlayAction(NewAction);
+	}
 }
 
 void UParkourManager::Interaction()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Interaction"));
 
-	CheckPlayAction(EParkourStateType::Interact);
+	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Interact);
+
+	if (NewAction != nullptr)
+	{
+		PlayAction(NewAction);
+	}
 
 	// 해당 액터 Interface 작성해서 공통적으로 함수가지게 하고
 	// 각 액터마다 다르게 로직 실행되도록 구현
@@ -176,6 +188,16 @@ void UParkourManager::SetCanMove(bool Value)
 	bCanMove = Value;
 }
 
+bool UParkourManager::GetIsCrouch()
+{
+	return bIsCrouch;
+}
+
+void UParkourManager::SetIsCrouch(bool Value)
+{
+	bIsCrouch = Value;
+}
+
 bool UParkourManager::GetIsOnLedge()
 {
 	return bIsOnLedge;
@@ -214,4 +236,54 @@ bool UParkourManager::GetOverrideFootIK()
 void UParkourManager::SetOverrideFootIK(bool Value)
 {
 	bOverrideFootIK = Value;
+}
+
+bool UParkourManager::GetOverrideHandIK()
+{
+	return bOverrideHandIK;
+}
+
+void UParkourManager::SetHandIKLocationR(FVector NewLocation)
+{
+	HandIKLocationR = NewLocation;
+}
+
+FVector UParkourManager::GetHandIKLocationR()
+{
+	return HandIKLocationR;
+}
+
+void UParkourManager::SetHandIKLocationL(FVector NewLocation)
+{
+	HandIKLocationL = NewLocation;
+}
+
+FVector UParkourManager::GetHandIKLocationL()
+{
+	return HandIKLocationL;
+}
+
+bool UParkourManager::GetLedgeHasHandSurfaceR()
+{
+	return bLedgeHasHandSurfaceR;
+}
+
+void UParkourManager::SetLedgeHasHandSurfaceR(bool Value)
+{
+	bLedgeHasHandSurfaceR = Value;
+}
+
+bool UParkourManager::GetLedgeHasHandSurfaceL()
+{
+	return bLedgeHasHandSurfaceL;
+}
+
+void UParkourManager::SetLedgeHasHandSurfaceL(bool Value)
+{
+	bLedgeHasHandSurfaceL = Value;
+}
+
+void UParkourManager::SetOverrideHandIK(bool Value)
+{
+	bOverrideHandIK = Value;
 }

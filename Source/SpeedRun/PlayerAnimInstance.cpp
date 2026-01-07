@@ -62,6 +62,7 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	float CalculatedDirection = UKismetAnimationLibrary::CalculateDirection(Velocity, Character->GetActorRotation());
 	float ClampCalculatedDirection = FMath::Clamp(CalculatedDirection, -45.0f, 45.0f);
 	Direction = Movement->bOrientRotationToMovement ? ClampCalculatedDirection : CalculatedDirection;
+	
 	bIsCrouching = Movement->IsCrouching();
 
 	bIsOnLedge = ParkourManager->GetIsOnLedge();
@@ -74,11 +75,10 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	RightFootAlpha = FMath::FInterpTo(RightFootAlpha, float(!bLedgeHasFootSurfaceR), GetWorld()->GetDeltaSeconds(), 0.2f);
 	
 
-	//HandIKLocationL = ParkourManager->GetHandIKLocationL();
-
-	//HandIKLocationR = ParkourManager->GetHandIKLocationR();
-
-	//HandIKTargetAlpha = FMath::FInterpTo(HandIKTargetAlpha, ParkourManager->GetHandIKTargetAlpha(), GetWorld()->GetDeltaSeconds(), 10.f);
+	HandIKLocationL = ParkourManager->GetHandIKLocationL();
+	HandIKLocationR = ParkourManager->GetHandIKLocationR();
+	bLedgeHasHandSurfaceL = ParkourManager->GetLedgeHasHandSurfaceL();
+	bLedgeHasHandSurfaceR = ParkourManager->GetLedgeHasHandSurfaceR();
 }
 
 

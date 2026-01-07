@@ -108,6 +108,8 @@ public:
 private:
 	bool bCanMove = false;
 
+	bool bIsCrouch = false;
+
 	bool bIsOnLedge = false;
 
 	bool bLedgeHasFootSurfaceL = false;
@@ -116,6 +118,15 @@ private:
 
 	bool bOverrideFootIK = false;
 
+	FVector HandIKLocationR;
+
+	FVector HandIKLocationL;
+
+	bool bLedgeHasHandSurfaceL = false;
+
+	bool bLedgeHasHandSurfaceR = false;
+
+	bool bOverrideHandIK = false;
 
 
 public:
@@ -124,6 +135,12 @@ public:
 
 	UFUNCTION()
 	void SetCanMove(bool Value);
+
+	UFUNCTION()
+	bool GetIsCrouch();
+
+	UFUNCTION()
+	void SetIsCrouch(bool Value);
 
 	UFUNCTION()
 	bool GetIsOnLedge();
@@ -148,5 +165,35 @@ public:
 
 	UFUNCTION()
 	void SetOverrideFootIK(bool Value);
+
+	UFUNCTION()
+	bool GetOverrideHandIK();
+
+	UFUNCTION()
+	void SetHandIKLocationR(FVector NewLocation);
+
+	UFUNCTION()
+	FVector GetHandIKLocationR();
+
+	UFUNCTION()
+	void SetHandIKLocationL(FVector NewLocation);
+
+	UFUNCTION()
+	FVector GetHandIKLocationL();
+
+	UFUNCTION()
+	bool GetLedgeHasHandSurfaceR();
+
+	UFUNCTION()
+	void SetLedgeHasHandSurfaceR(bool Value);
+
+	UFUNCTION()
+	bool GetLedgeHasHandSurfaceL();
+
+	UFUNCTION()
+	void SetLedgeHasHandSurfaceL(bool Value);
+
+	UFUNCTION()
+	void SetOverrideHandIK(bool Value);
 
 };

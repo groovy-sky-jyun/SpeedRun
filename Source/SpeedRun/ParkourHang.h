@@ -15,6 +15,8 @@ class SPEEDRUN_API UParkourHang : public UParkourAction
 	
 
 public:
+	virtual void Initialize(ASpeedRunCharacter* OwnerPlayer, UParkourManager* ParkourComponent) override;
+
 	virtual bool CheckVisibleToAction() override;
 
 	virtual void OnStart() override;
@@ -33,10 +35,13 @@ private:
 	void HangOnLedge();
 
 	UFUNCTION()
-	void CalculateTargetRotatorAndLocation(FRotator& TargetRotator, FVector& TargetLocation);
+	void CalculateLedgeRotatorAndLocation(FRotator& TargetRotator, FVector& TargetLocation);
 
 	UFUNCTION()
 	void CheckIfBelowLedgeHasSurface();
+
+	UFUNCTION()
+	void FindLedgeHandIKLocation();
 
 	UFUNCTION()
 	void LedgeJump(FRotator& TargetRotator, FVector& TargetLocation);

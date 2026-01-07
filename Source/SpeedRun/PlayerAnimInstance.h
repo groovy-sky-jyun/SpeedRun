@@ -93,7 +93,13 @@ public:
 	FVector HandIKLocationR;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	float HandIKTargetAlpha;
+	bool bLedgeHasHandSurfaceL;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
+	bool bLedgeHasHandSurfaceR;
+
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
+	//float HandIKTargetAlpha;
 
 
 public:

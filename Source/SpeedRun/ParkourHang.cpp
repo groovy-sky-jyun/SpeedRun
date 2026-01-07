@@ -12,6 +12,11 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "MotionWarpingComponent.h"
 
+void UParkourHang::Initialize(ASpeedRunCharacter* OwnerPlayer, UParkourManager* ParkourComponent)
+{
+	Super::Initialize(OwnerPlayer, ParkourComponent);
+}
+
 bool UParkourHang::CheckVisibleToAction()
 {
 	float InitialZOffset = Movement->IsFalling() ? InitialZOffset_Falling : InitialZOffset_Grounded;
@@ -101,12 +106,12 @@ void UParkourHang::HangOnLedge()
 
 
 	// 2. Target Rotation, Location 설정
-	CalculateTargetRotatorAndLocation(TargetRotator, TargetLocation);
+	CalculateLedgeRotatorAndLocation(TargetRotator, TargetLocation);
 
 
 	// 4-1. 발 지지대 공간 확인
 	CheckIfBelowLedgeHasSurface();
-
+	FindLedgeHandIKLocation();
 
 	// 3. Rotation 적용
 	Player->SetActorRotation(TargetRotator);
@@ -162,15 +167,13 @@ void UParkourHang::HangOnLedge()
 	
 	Movement->SetMovementMode(EMovementMode::MOVE_Flying);
 
-	
-
-	//Player->SetActorLocationAndRotation(TargetLocation, TargetRotator);
-	//GetPlayerWorld()->GetTimerManager().SetTimer(LedgeIKHandle, this, &UParkourComponent::LedgeHandIK, 0.01f, true);
-	//notify : 
-	// HandIKTargetAlpha = 1.0f;
+	//HandIKTargetAlpha = 1.0f;
 }
 
-void UParkourHang::CalculateTargetRotatorAndLocation(FRotator& TargetRotator, FVector& TargetLocation)
+/*
+* 플레이어가 매달릴 위치 계산 (난간에서 살짝아래위치)
+*/
+void UParkourHang::CalculateLedgeRotatorAndLocation(FRotator& TargetRotator, FVector& TargetLocation)
 {
 	FRotator OffsetRotator = UKismetMathLibrary::MakeRotFromX(DetectLedgeNormal);
 
@@ -201,7 +204,7 @@ void UParkourHang::CheckIfBelowLedgeHasSurface()
 	FVector StartLocationL = Mesh->GetComponentLocation() + FVector(25.f, 0.f, 70.f);
 	FVector EndLocationL = StartLocationL + (Player->GetActorForwardVector() * TraceDistanceH);
 	bool bHitFootSurfaceL = GetPlayerWorld()->LineTraceSingleByChannel(HitResultL, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
-	DrawDebugLine(GetPlayerWorld(), StartLocationL, EndLocationL, FColor::Red, false, 2.f, 0, 1.f);
+	//DrawDebugLine(GetPlayerWorld(), StartLocationL, EndLocationL, FColor::Red, false, 2.f, 0, 1.f);
 
 	ParkourManager->SetLedgeHasFootSurfaceL(bHitFootSurfaceL);
 
@@ -211,9 +214,47 @@ void UParkourHang::CheckIfBelowLedgeHasSurface()
 	FVector StartLocationR = Mesh->GetComponentLocation() + FVector(-25.f, 0.f, 70.f);
 	FVector EndLocationR = StartLocationR + (Player->GetActorForwardVector() * TraceDistanceH);
 	bool bHitFootSurfaceR = GetPlayerWorld()->LineTraceSingleByChannel(HitResultR, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
-	DrawDebugLine(GetPlayerWorld(), StartLocationR, EndLocationR, FColor::Red, false, 2.f, 0, 1.f);
+	//DrawDebugLine(GetPlayerWorld(), StartLocationR, EndLocationR, FColor::Red, false, 2.f, 0, 1.f);
 
 	ParkourManager->SetLedgeHasFootSurfaceR(bHitFootSurfaceR);
+}
+
+void UParkourHang::FindLedgeHandIKLocation()
+{
+	USkeletalMeshComponent* Mesh = Player->GetMesh();
+
+	float TraceDistance = 30.f;
+	FVector HandOffset = Player->GetActorRightVector() * TraceDistance;
+
+
+	/* 1. Left Hand IK Location 확인 */
+	FHitResult HitResultL;
+	FVector StartLocationL = DetectLedgeLocation + FVector(0.f, 0.f, 50.f) + (HandOffset * -1);
+	FVector EndLocationL = StartLocationL + FVector(0.f, 0.f, -100.f);
+	bool bHitLedgeHandL = GetPlayerWorld()->LineTraceSingleByChannel(HitResultL, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
+	DrawDebugLine(GetPlayerWorld(), StartLocationL, EndLocationL, FColor::Red, false, 2.f, 0, 1.f);
+
+	// Check the InitialOverlap.
+	if (bHitLedgeHandL && HitResultL.Distance > 0)
+	{
+		ParkourManager->SetLedgeHasHandSurfaceL(true);
+		ParkourManager->SetHandIKLocationL(HitResultL.ImpactPoint);
+	}
+
+
+	/* 2. Right Hand IK Location 확인 */
+	FHitResult HitResultR;
+	FVector StartLocationR = DetectLedgeLocation + FVector(0.f, 0.f, 50.f) + HandOffset;
+	FVector EndLocationR = StartLocationR + FVector(0.f, 0.f, -100.f);
+	bool bHitLedgeHandR = GetPlayerWorld()->LineTraceSingleByChannel(HitResultR, StartLocationR, EndLocationR, ECollisionChannel::ECC_GameTraceChannel1);
+	DrawDebugLine(GetPlayerWorld(), StartLocationR, EndLocationR, FColor::Red, false, 2.f, 0, 1.f);
+
+	// Check the InitialOverlap.
+	if (bHitLedgeHandR && HitResultR.Distance > 0)
+	{
+		ParkourManager->SetLedgeHasHandSurfaceR(true);
+		ParkourManager->SetHandIKLocationR(HitResultR.ImpactPoint);
+	}
 }
 
 void UParkourHang::LedgeJump(FRotator& TargetRotator, FVector& TargetLocation)
