@@ -4,19 +4,14 @@
 #include "ParkourManager.h"
 #include "SpeedRunCharacter.h"
 #include "ParkourAction.h"
+#include "SpeedRunPlayerController.h"
 
-// Sets default values for this component's properties
+
 UParkourManager::UParkourManager()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = false;
-
-	// ...
 }
 
-
-// Called when the game starts
 void UParkourManager::BeginPlay()
 {
 	Super::BeginPlay();
@@ -36,28 +31,53 @@ void UParkourManager::BeginPlay()
 	CurrentStateType = EParkourStateType::None;
 }
 
-
-// Called every frame
 void UParkourManager::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
 }
 
-void UParkourManager::SetupParkourInputComponent(UEnhancedInputComponent* ParkourInputComponent)
+
+bool UParkourManager::TryDetectParkour()
 {
-	ParkourInputComponent->BindAction(UpAction, ETriggerEvent::Started, this, &UParkourManager::Input_Up_Start);
-	ParkourInputComponent->BindAction(UpAction, ETriggerEvent::Completed, this, &UParkourManager::Input_Up_End);
 
-	ParkourInputComponent->BindAction(DownAction, ETriggerEvent::Started, this, &UParkourManager::Input_Down);
+	if (true)// parkour 조건 만족 시
+	{
+		SwitchToParkourInput(true);
+	}
 
-	ParkourInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &UParkourManager::Sprint);
-
-	ParkourInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &UParkourManager::Interaction);
+	return false;
 }
 
-void UParkourManager::Input_Up_Start(const FInputActionValue& Value)
+void UParkourManager::SwitchToParkourInput(bool Value)
+{
+	if (ASpeedRunPlayerController* PC = Cast<ASpeedRunPlayerController>(Player->GetController()))
+	{
+		PC->UpdateParkourMappingContext(Value);
+	}
+}
+
+
+void UParkourManager::SetupParkourInputComponent(UInputComponent* PlayerInputComponent)
+{
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &UParkourManager::HandleMove);
+		EnhancedInputComponent->BindAction(UpAction, ETriggerEvent::Started, this, &UParkourManager::HandleUp_Start);
+		EnhancedInputComponent->BindAction(UpAction, ETriggerEvent::Completed, this, &UParkourManager::HandleUp_End);
+		EnhancedInputComponent->BindAction(DownAction, ETriggerEvent::Started, this, &UParkourManager::HandleDown);
+		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &UParkourManager::HandleDash);
+	}
+}
+
+void UParkourManager::HandleMove(const FInputActionValue& Value)
+{
+	FVector2D MovementVector = Value.Get<FVector2D>();
+
+	//DoMove(MovementVector.X, MovementVector.Y);
+}
+
+
+void UParkourManager::HandleUp_Start(const FInputActionValue& Value)
 {
 	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Up);
 
@@ -75,24 +95,10 @@ void UParkourManager::Input_Up_Start(const FInputActionValue& Value)
 		{
 			PlayAction(NewAction);
 		}
-	}
-
-	/*
-	UpdateState(EParkourStateType::Up);
-
-	if (CurrentAction == nullptr)
-	{
-		Player->Jump();
-	}
-	else
-	{
-		CheckPlayAction(EParkourStateType::Up);
-	}*/
-
-	
+	}	
 }
 
-void UParkourManager::Input_Up_End(const FInputActionValue& Value)
+void UParkourManager::HandleUp_End(const FInputActionValue& Value)
 {
 	if (CurrentAction == nullptr)
 	{
@@ -102,7 +108,7 @@ void UParkourManager::Input_Up_End(const FInputActionValue& Value)
 	CurrentAction = nullptr;
 }
 
-void UParkourManager::Input_Down(const FInputActionValue& Value)
+void UParkourManager::HandleDown(const FInputActionValue& Value)
 {
 	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Down);
 
@@ -113,7 +119,7 @@ void UParkourManager::Input_Down(const FInputActionValue& Value)
 	
 }
 
-void UParkourManager::Sprint(const FInputActionValue& Value)
+void UParkourManager::HandleDash(const FInputActionValue& Value)
 {
 	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Sprint);
 
@@ -123,20 +129,6 @@ void UParkourManager::Sprint(const FInputActionValue& Value)
 	}
 }
 
-void UParkourManager::Interaction()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Interaction"));
-
-	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Interact);
-
-	if (NewAction != nullptr)
-	{
-		PlayAction(NewAction);
-	}
-
-	// 해당 액터 Interface 작성해서 공통적으로 함수가지게 하고
-	// 각 액터마다 다르게 로직 실행되도록 구현
-}
 
 UParkourAction* UParkourManager::CheckPlayAction(EParkourStateType InputType)
 {
@@ -172,118 +164,4 @@ void UParkourManager::PlayAction(UParkourAction* NewAction)
 void UParkourManager::UpdateState(EParkourStateType InputType)
 {
 	CurrentStateType = InputType;
-}
-
-
-/*
-* Variables Get/Set Function
-*/
-bool UParkourManager::GetCanMove()
-{
-	return bCanMove;
-}
-
-void UParkourManager::SetCanMove(bool Value)
-{
-	bCanMove = Value;
-}
-
-bool UParkourManager::GetIsCrouch()
-{
-	return bIsCrouch;
-}
-
-void UParkourManager::SetIsCrouch(bool Value)
-{
-	bIsCrouch = Value;
-}
-
-bool UParkourManager::GetIsOnLedge()
-{
-	return bIsOnLedge;
-}
-
-void UParkourManager::SetIsOnLedge(bool Value)
-{
-	bIsOnLedge = Value;
-}
-
-bool UParkourManager::GetLedgeHasFootSurfaceR()
-{
-	return bLedgeHasFootSurfaceR;
-}
-
-void UParkourManager::SetLedgeHasFootSurfaceR(bool Value)
-{
-	bLedgeHasFootSurfaceR = Value;
-}
-
-bool UParkourManager::GetLedgeHasFootSurfaceL()
-{
-	return bLedgeHasFootSurfaceL;
-}
-
-void UParkourManager::SetLedgeHasFootSurfaceL(bool Value)
-{
-	bLedgeHasFootSurfaceL = Value;
-}
-
-bool UParkourManager::GetOverrideFootIK()
-{
-	return bOverrideFootIK;
-}
-
-void UParkourManager::SetOverrideFootIK(bool Value)
-{
-	bOverrideFootIK = Value;
-}
-
-bool UParkourManager::GetOverrideHandIK()
-{
-	return bOverrideHandIK;
-}
-
-void UParkourManager::SetHandIKLocationR(FVector NewLocation)
-{
-	HandIKLocationR = NewLocation;
-}
-
-FVector UParkourManager::GetHandIKLocationR()
-{
-	return HandIKLocationR;
-}
-
-void UParkourManager::SetHandIKLocationL(FVector NewLocation)
-{
-	HandIKLocationL = NewLocation;
-}
-
-FVector UParkourManager::GetHandIKLocationL()
-{
-	return HandIKLocationL;
-}
-
-bool UParkourManager::GetLedgeHasHandSurfaceR()
-{
-	return bLedgeHasHandSurfaceR;
-}
-
-void UParkourManager::SetLedgeHasHandSurfaceR(bool Value)
-{
-	bLedgeHasHandSurfaceR = Value;
-}
-
-bool UParkourManager::GetLedgeHasHandSurfaceL()
-{
-	return bLedgeHasHandSurfaceL;
-}
-
-void UParkourManager::SetLedgeHasHandSurfaceL(bool Value)
-{
-	bLedgeHasHandSurfaceL = Value;
-}
-
-void UParkourManager::SetOverrideHandIK(bool Value)
-{
-	bOverrideHandIK = Value;
 }

@@ -11,14 +11,15 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "SpeedRun.h"
-//#include "ParkourComponent.h"
+#include "ParkourMovementComponent.h"
 #include "ParkourManager.h"
 #include "MotionWarpingComponent.h" 
 #include "GameplayTagContainer.h"
 
-ASpeedRunCharacter::ASpeedRunCharacter()
+ASpeedRunCharacter::ASpeedRunCharacter(const FObjectInitializer& ObjectInitializer) : Super(
+	ObjectInitializer.SetDefaultSubobjectClass<UParkourMovementComponent>(CharacterMovementComponentName))
 {
-	JumpMaxCount = 3;
+	JumpMaxCount = 1;
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -27,19 +28,6 @@ ASpeedRunCharacter::ASpeedRunCharacter()
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
-
-	// Configure character movement
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f);
-
-	// Note: For faster iteration times these variables, and many more, can be tweaked in the Character Blueprint
-	// instead of recompiling to adjust them
-	GetCharacterMovement()->JumpZVelocity = 500.f;
-	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
-	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
-	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
-	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
 
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -55,49 +43,18 @@ ASpeedRunCharacter::ASpeedRunCharacter()
 	// Create Parkour Movement Component
 	ParkourComponent = CreateDefaultSubobject<UParkourManager>(TEXT("ParkourComponent"));
 	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarp"));
-
-	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
-	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
-}
-
-void ASpeedRunCharacter::ExecuteParkourDelegate(const FOnParkourAnimEndedDelegate& DelegateToCall)
-{
-	if (DelegateToCall.IsBound())
-	{
-		DelegateToCall.Execute();
-	}
-}
-
-UMotionWarpingComponent* ASpeedRunCharacter::GetMotionWarpingComponent()
-{
-	return MotionWarpingComponent;
-}
-
-//UParkourComponent* ASpeedRunCharacter::GetParkourComponent()
-//{
-//	return ParkourComponent;
-//}
-
-UParkourManager* ASpeedRunCharacter::GetParkourManager()
-{
-	return ParkourComponent;
 }
 
 void ASpeedRunCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::Move);
-		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::Look);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::HandleLook);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::HandleMove);
 
-		// Looking
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::Look);
-
-		if (ParkourComponent)
-		{
-			ParkourComponent->SetupParkourInputComponent(EnhancedInputComponent);
-		}
+		EnhancedInputComponent->BindAction(UpAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleUp);
+		EnhancedInputComponent->BindAction(DownAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleDown);
+		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleDash);
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleInteract);
 	}
 	else
 	{
@@ -105,29 +62,63 @@ void ASpeedRunCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	}
 }
 
-void ASpeedRunCharacter::Move(const FInputActionValue& Value)
+void ASpeedRunCharacter::HandleLook(const FInputActionValue& Value)
 {
-	// input is a Vector2D
+	FVector2D LookAxisVector = Value.Get<FVector2D>();
+
+	DoLook(LookAxisVector.X, LookAxisVector.Y);
+}
+
+void ASpeedRunCharacter::HandleMove(const FInputActionValue& Value)
+{
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-	if (ParkourComponent && ParkourComponent->GetIsOnLedge())
+	DoMove(MovementVector.X, MovementVector.Y);
+}
+
+void ASpeedRunCharacter::HandleUp(const FInputActionValue& Value)
+{
+	if (ParkourComponent && ParkourComponent->TryDetectParkour())
 	{
-		//ParkourComponent->HandleLedgeInput(MovementVector);
-		UE_LOG(LogTemp, Warning, TEXT("Shimmy"));
+
 	}
 	else
 	{
-		DoMove(MovementVector.X, MovementVector.Y);
+		DoUp();
 	}
 }
 
-void ASpeedRunCharacter::Look(const FInputActionValue& Value)
+void ASpeedRunCharacter::HandleDown(const FInputActionValue& Value)
 {
-	// input is a Vector2D
-	FVector2D LookAxisVector = Value.Get<FVector2D>();
+	if (ParkourComponent && ParkourComponent->TryDetectParkour())
+	{
 
-	// route the input
-	DoLook(LookAxisVector.X, LookAxisVector.Y);
+	}
+	else
+	{
+		DoDown();
+	}
+}
+
+void ASpeedRunCharacter::HandleDash(const FInputActionValue& Value)
+{
+	DoDash();
+}
+
+void ASpeedRunCharacter::HandleInteract(const FInputActionValue& Value)
+{
+	// if 상호작용 물체에 focus 된 경우
+	DoInteract();
+}
+
+void ASpeedRunCharacter::DoLook(float Yaw, float Pitch)
+{
+	if (GetController() != nullptr)
+	{
+		// add yaw and pitch input to controller
+		AddControllerYawInput(Yaw);
+		AddControllerPitchInput(Pitch);
+	}
 }
 
 void ASpeedRunCharacter::DoMove(float Right, float Forward)
@@ -150,12 +141,23 @@ void ASpeedRunCharacter::DoMove(float Right, float Forward)
 	}
 }
 
-void ASpeedRunCharacter::DoLook(float Yaw, float Pitch)
+void ASpeedRunCharacter::DoUp()
 {
-	if (GetController() != nullptr)
-	{
-		// add yaw and pitch input to controller
-		AddControllerYawInput(Yaw);
-		AddControllerPitchInput(Pitch);
-	}
+	Jump();
 }
+
+void ASpeedRunCharacter::DoDown()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Crouch"));
+}
+
+void ASpeedRunCharacter::DoDash()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Sprint"));
+}
+
+void ASpeedRunCharacter::DoInteract()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Interact"));
+}
+

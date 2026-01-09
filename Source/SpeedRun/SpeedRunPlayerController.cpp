@@ -12,25 +12,6 @@
 void ASpeedRunPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// only spawn touch controls on local player controllers
-	if (ShouldUseTouchControls() && IsLocalPlayerController())
-	{
-		// spawn the mobile controls widget
-		MobileControlsWidget = CreateWidget<UUserWidget>(this, MobileControlsWidgetClass);
-
-		if (MobileControlsWidget)
-		{
-			// add the controls to the player screen
-			MobileControlsWidget->AddToPlayerScreen(0);
-
-		} else {
-
-			UE_LOG(LogSpeedRun, Error, TEXT("Could not spawn mobile controls widget."));
-
-		}
-
-	}
 }
 
 void ASpeedRunPlayerController::SetupInputComponent()
@@ -47,21 +28,23 @@ void ASpeedRunPlayerController::SetupInputComponent()
 			{
 				Subsystem->AddMappingContext(CurrentContext, 0);
 			}
-
-			// only add these IMCs if we're not using mobile touch input
-			if (!ShouldUseTouchControls())
-			{
-				for (UInputMappingContext* CurrentContext : MobileExcludedMappingContexts)
-				{
-					Subsystem->AddMappingContext(CurrentContext, 0);
-				}
-			}
 		}
 	}
 }
 
-bool ASpeedRunPlayerController::ShouldUseTouchControls() const
+void ASpeedRunPlayerController::UpdateParkourMappingContext(bool Value)
 {
-	// are we on a mobile platform? Should we force touch?
-	return SVirtualJoystick::ShouldDisplayTouchInterface() || bForceTouchControls;
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		if (Value)
+		{
+			Subsystem->AddMappingContext(ParkourMappingContext, 1);
+		}
+		else
+		{
+			Subsystem->RemoveMappingContext(ParkourMappingContext);
+		}
+	}
+	
 }
+

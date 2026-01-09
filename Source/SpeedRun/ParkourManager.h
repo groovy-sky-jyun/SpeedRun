@@ -19,20 +19,21 @@ class SPEEDRUN_API UParkourManager : public UActorComponent
 	GENERATED_BODY()
 
 public:	
-	// Sets default values for this component's properties
 	UParkourManager();
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	/** Initialize input action bindings */
-	void SetupParkourInputComponent(class UEnhancedInputComponent* ParkourInputComponent);
+	void SetupParkourInputComponent(class UInputComponent* ParkourInputComponent);
 
+	UFUNCTION(BlueprintCallable)
+	bool TryDetectParkour();
+
+	UFUNCTION(BlueprintCallable)
+	void SwitchToParkourInput(bool Value);
 
 
 protected:
@@ -51,43 +52,37 @@ private:
 
 	EParkourStateType CurrentStateType;
 
-protected:
 
-	/* Jump Input Action */
+
+protected:
+	UPROPERTY(EditAnywhere, Category = "Setting|Input")
+	UInputAction* MoveAction;
+
 	UPROPERTY(EditAnywhere, Category = "Setting|Input")
 	UInputAction* UpAction;
 
-	/* [Crouch/Slide/Drop/Roll] */
 	UPROPERTY(EditAnywhere, Category = "Setting|Input")
 	UInputAction* DownAction;
 
-	/* Dash Input Action */
 	UPROPERTY(EditAnywhere, Category = "Setting|Input")
-	UInputAction* SprintAction;
-
-	/* [Interaction] */
-	UPROPERTY(EditAnywhere, Category = "Setting|Input")
-	UInputAction* InteractAction;
-
+	UInputAction* DashAction;
 
 
 public: /* Called when the Player State Changes for input key */
+	UFUNCTION(BlueprintCallable, Category = "InputActions")
+	void HandleMove(const FInputActionValue& Value);
 
-	UFUNCTION(BlueprintCallable, Category = "Input")
-	void Input_Up_Start(const FInputActionValue& Value);
+	UFUNCTION(BlueprintCallable, Category = "InputActions")
+	void HandleUp_Start(const FInputActionValue& Value);
 
-	UFUNCTION(BlueprintCallable, Category = "Input")
-	void Input_Up_End(const FInputActionValue& Value);
+	UFUNCTION(BlueprintCallable, Category = "InputActions")
+	void HandleUp_End(const FInputActionValue& Value);
 
-	UFUNCTION(BlueprintCallable, Category = "Input")
-	void Input_Down(const FInputActionValue& Value);
+	UFUNCTION(BlueprintCallable, Category = "InputActions")
+	void HandleDown(const FInputActionValue& Value);
 
-	/** Called for dashing input */
-	void Sprint(const FInputActionValue& Value);
-
-	/* Interation Key Actions */
-	UFUNCTION()
-	void Interaction();
+	UFUNCTION(BlueprintCallable, Category = "InputActions")
+	void HandleDash(const FInputActionValue& Value);
 
 
 
@@ -130,70 +125,41 @@ private:
 
 
 public:
-	UFUNCTION()
-	bool GetCanMove();
+	/* State */
+	FORCEINLINE bool GetCanMove() const { return bCanMove; }
+	FORCEINLINE void SetCanMove(bool Value)  { bCanMove = Value; }
 
-	UFUNCTION()
-	void SetCanMove(bool Value);
+	FORCEINLINE bool GetIsCrouch() const { return bIsCrouch; }
+	FORCEINLINE void SetIsCrouch(bool Value) { bIsCrouch = Value; }
 
-	UFUNCTION()
-	bool GetIsCrouch();
+	FORCEINLINE bool GetIsOnLedge() const { return bIsOnLedge; }
+	FORCEINLINE void SetIsOnLedge(bool Value) { bIsOnLedge = Value; }
 
-	UFUNCTION()
-	void SetIsCrouch(bool Value);
 
-	UFUNCTION()
-	bool GetIsOnLedge();
+	/* FootIK */
+	FORCEINLINE bool GetOverrideFootIK() const { return bOverrideFootIK; }
+	FORCEINLINE void SetOverrideFootIK(bool Value) { bOverrideFootIK = Value; }
 
-	UFUNCTION()
-	void SetIsOnLedge(bool Value);
+	FORCEINLINE bool GetLedgeHasFootSurfaceR() const { return bLedgeHasFootSurfaceR; }
+	FORCEINLINE void SetLedgeHasFootSurfaceR(bool Value) { bLedgeHasFootSurfaceR = Value; }
 
-	UFUNCTION()
-	bool GetLedgeHasFootSurfaceR();
+	FORCEINLINE bool GetLedgeHasFootSurfaceL() const { return bLedgeHasFootSurfaceL; }
+	FORCEINLINE void SetLedgeHasFootSurfaceL(bool Value) { bLedgeHasFootSurfaceL = Value; }
 
-	UFUNCTION()
-	void SetLedgeHasFootSurfaceR(bool Value);
 
-	UFUNCTION()
-	bool GetLedgeHasFootSurfaceL();
+	/* HandIK */
+	FORCEINLINE bool GetOverrideHandIK() const { return bOverrideHandIK; }
+	FORCEINLINE void SetOverrideHandIK(bool Value) { bOverrideHandIK = Value; }
 
-	UFUNCTION()
-	void SetLedgeHasFootSurfaceL(bool Value);
+	FORCEINLINE bool GetLedgeHasHandSurfaceL() const { return bLedgeHasHandSurfaceL; }
+	FORCEINLINE void SetLedgeHasHandSurfaceL(bool Value) { bLedgeHasHandSurfaceL = Value; }
 
-	UFUNCTION()
-	bool GetOverrideFootIK();
+	FORCEINLINE bool GetLedgeHasHandSurfaceR() const { return bLedgeHasHandSurfaceR; }
+	FORCEINLINE void SetLedgeHasHandSurfaceR(bool Value) { bLedgeHasHandSurfaceR = Value; }
 
-	UFUNCTION()
-	void SetOverrideFootIK(bool Value);
+	FORCEINLINE FVector GetHandIKLocationR() const { return HandIKLocationR; }
+	FORCEINLINE void SetHandIKLocationR(FVector NewLocation) { HandIKLocationR = NewLocation; }
 
-	UFUNCTION()
-	bool GetOverrideHandIK();
-
-	UFUNCTION()
-	void SetHandIKLocationR(FVector NewLocation);
-
-	UFUNCTION()
-	FVector GetHandIKLocationR();
-
-	UFUNCTION()
-	void SetHandIKLocationL(FVector NewLocation);
-
-	UFUNCTION()
-	FVector GetHandIKLocationL();
-
-	UFUNCTION()
-	bool GetLedgeHasHandSurfaceR();
-
-	UFUNCTION()
-	void SetLedgeHasHandSurfaceR(bool Value);
-
-	UFUNCTION()
-	bool GetLedgeHasHandSurfaceL();
-
-	UFUNCTION()
-	void SetLedgeHasHandSurfaceL(bool Value);
-
-	UFUNCTION()
-	void SetOverrideHandIK(bool Value);
-
+	FORCEINLINE FVector GetHandIKLocationL() const { return HandIKLocationL; }
+	FORCEINLINE void SetHandIKLocationL(FVector NewLocation) { HandIKLocationL = NewLocation; }
 };

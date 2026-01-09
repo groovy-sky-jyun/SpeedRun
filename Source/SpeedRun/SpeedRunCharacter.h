@@ -13,48 +13,19 @@ class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
 
-DECLARE_DYNAMIC_DELEGATE(FOnParkourAnimEndedDelegate);
-
-USTRUCT(BlueprintType)
-struct FParkourActionPayload
-{
-	GENERATED_BODY()
-
-public:
-	// 실행할 몽타주
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* AnimMontage = nullptr;
-
-	// 모션 워핑 타겟 이름 (예: "SlideTarget", "VaultTarget")
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName TargetName = NAME_None;
-
-	// 워핑할 목표 위치
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector TargetLocation = FVector::ZeroVector;
-
-	// 워핑할 목표 회전
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FRotator TargetRotation = FRotator::ZeroRotator;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FOnParkourAnimEndedDelegate OnParkourAnimEndedDelegate;
-
-};
-
-DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
 /**
  *  A simple player-controllable third person character
  *  Implements a controllable orbiting camera
  */
 
-
 UCLASS(abstract)
 class ASpeedRunCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+
+private:
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;
@@ -63,82 +34,89 @@ class ASpeedRunCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 
-	/** Parkour movement */
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	//TObjectPtr<class UParkourComponent> ParkourComponent;
-	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UParkourManager> ParkourComponent;
 
-	/** Motion Warping */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UMotionWarpingComponent> MotionWarpingComponent;
 
-public:
-
-	/** Returns CameraBoom subobject **/
-	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-
-	/** Returns FollowCamera subobject **/
-	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-
-
 
 public:
+	explicit ASpeedRunCharacter(const FObjectInitializer& ObjectInitializer);	
 
-	/** Constructor */
-	ASpeedRunCharacter();	
-	
-	UFUNCTION(BlueprintCallable, Category = "Parkour|Anim")
-	void ExecuteParkourDelegate(const FOnParkourAnimEndedDelegate& DelegateToCall);
-
-	UFUNCTION()
-	UMotionWarpingComponent* GetMotionWarpingComponent();
-
-	//UFUNCTION()
-	//UParkourComponent* GetParkourComponent();
-
-	UFUNCTION()
-	UParkourManager* GetParkourManager();
 
 protected:
-
-	/** Move Input Action */
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* MoveAction;
-
-	/** Look Input Action */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* LookAction;
 
-	/** Mouse Look Input Action */
 	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* MouseLookAction;
+	UInputAction* MoveAction;
 
-protected:
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* UpAction;
 
-	/** Initialize input action bindings */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* DownAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* DashAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* InteractAction;
+	
+
+protected:	/** Called for input */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	/** Called for movement input */
-	void Move(const FInputActionValue& Value);
+	UFUNCTION()
+	void HandleLook(const FInputActionValue& Value);
 
-	/** Called for looking input */
-	void Look(const FInputActionValue& Value);
+	UFUNCTION()
+	void HandleMove(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void HandleUp(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void HandleDown(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void HandleDash(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void HandleInteract(const FInputActionValue& Value);
+
 
 public:
-	/** Handles move inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category = "Input")
-	virtual void DoMove(float Right, float Forward);
-
-	/** Handles look inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoLook(float Yaw, float Pitch);
 
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	virtual void DoMove(float Right, float Forward);
+
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	virtual void DoUp();
+
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	virtual void DoDown();
+
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	virtual void DoDash();
+
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	virtual void DoInteract();
+
+
 
 public:
-	UFUNCTION(BlueprintImplementableEvent, Category = "Parkour|Anim")
-	void PlayMotionWarping(FParkourActionPayload ParkourActionPayload);
+	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
+	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	UFUNCTION(BlueprintCallable, Category="Components")
+	FORCEINLINE class UMotionWarpingComponent* GetMotionWarpingComponent() const { return MotionWarpingComponent; }
+
+	UFUNCTION(BlueprintCallable, Category = "Components")
+	FORCEINLINE class UParkourManager* GetParkourManager() const { return ParkourComponent; }
 };
 

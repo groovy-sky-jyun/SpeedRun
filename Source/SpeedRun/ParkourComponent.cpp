@@ -263,18 +263,6 @@ void UParkourComponent::StartSliding()
 
 	FVector TargetLocation = StartLocation + (ForwardVector * SlideDistance);
 	FRotator TargetRotation = Player->GetActorRotation();
-
-	FParkourActionPayload ParkourActionPayload = {
-		.AnimMontage = SlideAnim,
-		.TargetName = SlideTargetName,  
-		.TargetLocation = TargetLocation, 
-		.TargetRotation = TargetRotation,
-	};
-
-	ParkourActionPayload.OnParkourAnimEndedDelegate.BindDynamic(this, &UParkourComponent::EndSliding);
-
-	Player->PlayMotionWarping(ParkourActionPayload);
-
 }
 	
 
@@ -297,10 +285,6 @@ void UParkourComponent::Crouch()
 	AddTag(CrouchedTag);
 
 	Player->Crouch(); //기본 Crouch
-
-	FParkourActionPayload ParkourActionPayload;
-	ParkourActionPayload.AnimMontage = CrouchAnim;
-	Player->PlayMotionWarping(ParkourActionPayload);
 }
 
 void UParkourComponent::UnCrouch()
@@ -310,11 +294,6 @@ void UParkourComponent::UnCrouch()
 	RemoveTag(CrouchedTag);
 
 	Player->UnCrouch(); //기본 UnCrouch
-
-//	Movement->CrouchedHalfHeight = DefaultCrouchedHalfHeight;
-	//Movement->GetNavAgentPropertiesRef().bCanCrouch = false;
-
-	//Player->PlayMotionWarping(ParkourActionPayload);
 }
 
 void UParkourComponent::Drop()
@@ -803,6 +782,11 @@ bool UParkourComponent::FindLedgeHandIKLocation(float RightOffset, FVector& Targ
 		return true;
 	}
 
+	return false;
+}
+
+bool UParkourComponent::TryDetectParkour()
+{
 	return false;
 }
 

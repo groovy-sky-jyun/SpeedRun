@@ -432,4 +432,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AnimMontage|Movement")
 	UAnimMontage* ClimbUp;
 
+public:
+	UFUNCTION(BlueprintCallable, Category="Detect")
+	bool TryDetectParkour();
+
 };
