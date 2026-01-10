@@ -30,11 +30,10 @@ public:
 	void SetupParkourInputComponent(class UInputComponent* ParkourInputComponent);
 
 	UFUNCTION(BlueprintCallable)
-	bool TryDetectParkour();
+	bool TryDetectParkour(EParkourStateType InputType);
 
 	UFUNCTION(BlueprintCallable)
 	void SwitchToParkourInput(bool Value);
-
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Owner")

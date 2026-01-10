@@ -45,6 +45,14 @@ ASpeedRunCharacter::ASpeedRunCharacter(const FObjectInitializer& ObjectInitializ
 	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarp"));
 }
 
+void ASpeedRunCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// 모든 컴포넌트가 세팅된 직후에 안전하게 캐스팅하여 저장
+	ParkourMovementComponent = Cast<UParkourMovementComponent>(GetCharacterMovement());
+}
+
 void ASpeedRunCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
@@ -78,26 +86,22 @@ void ASpeedRunCharacter::HandleMove(const FInputActionValue& Value)
 
 void ASpeedRunCharacter::HandleUp(const FInputActionValue& Value)
 {
-	if (ParkourComponent && ParkourComponent->TryDetectParkour())
+	if (ParkourComponent && ParkourComponent->TryDetectParkour(EParkourStateType::Up))
 	{
-
+		return;
 	}
-	else
-	{
-		DoUp();
-	}
+	
+	DoUp();
 }
 
 void ASpeedRunCharacter::HandleDown(const FInputActionValue& Value)
 {
-	if (ParkourComponent && ParkourComponent->TryDetectParkour())
+	if (ParkourComponent && ParkourComponent->TryDetectParkour(EParkourStateType::Down))
 	{
+		return;
+	}
 
-	}
-	else
-	{
-		DoDown();
-	}
+	DoDown();
 }
 
 void ASpeedRunCharacter::HandleDash(const FInputActionValue& Value)
@@ -148,12 +152,24 @@ void ASpeedRunCharacter::DoUp()
 
 void ASpeedRunCharacter::DoDown()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Crouch"));
+	if (CanCrouch())
+	{
+		if (!GetCharacterMovement()->IsCrouching())
+		{
+			Crouch();
+		}
+		else
+		{
+			UnCrouch();
+		}
+	}
 }
 
 void ASpeedRunCharacter::DoDash()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Sprint"));
+	FVector ForwardDir = GetActorForwardVector();
+
+	LaunchCharacter(ForwardDir * DashDistance, true, true);
 }
 
 void ASpeedRunCharacter::DoInteract()

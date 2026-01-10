@@ -37,16 +37,51 @@ void UParkourManager::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 }
 
 
-bool UParkourManager::TryDetectParkour()
+bool UParkourManager::TryDetectParkour(EParkourStateType InputType)
 {
-
-	if (true)// parkour 조건 만족 시
+	if (UParkourAction* NewAction = CheckPlayAction(InputType))
 	{
 		SwitchToParkourInput(true);
+		
+		PlayAction(NewAction);
+
+		return true;
 	}
 
 	return false;
 }
+
+UParkourAction* UParkourManager::CheckPlayAction(EParkourStateType InputType)
+{
+	// 현재 상태에서 action을 변경(연계나 취소)할 수 있는지 확인하는 로직 추가
+
+	if (TArray<UParkourAction*>* InputActionList = InputActionMap.Find(InputType))
+	{
+		for (UParkourAction* Action : *InputActionList)
+		{
+			// 우선순위대로 실행 조건 체크
+			if (Action && Action->CheckVisibleToAction())
+			{
+				return Action;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+void UParkourManager::PlayAction(UParkourAction* NewAction)
+{
+	if (CurrentAction)
+	{
+		CurrentAction->OnEnd();
+	}
+
+	CurrentAction = NewAction;
+
+	NewAction->OnStart();
+}
+
 
 void UParkourManager::SwitchToParkourInput(bool Value)
 {
@@ -130,36 +165,7 @@ void UParkourManager::HandleDash(const FInputActionValue& Value)
 }
 
 
-UParkourAction* UParkourManager::CheckPlayAction(EParkourStateType InputType)
-{
-	// 현재 상태에서 action을 변경(연계나 취소)할 수 있는지 확인
-	
-	if (TArray<UParkourAction*>* InputActionList = InputActionMap.Find(InputType))
-	{
-		for (UParkourAction* Action : *InputActionList)
-		{
-			// 우선순위대로 실행 조건 체크
-			if (Action && Action->CheckVisibleToAction())
-			{
-				return Action;
-			}
-		}
-	}
 
-	return nullptr;
-}
-
-void UParkourManager::PlayAction(UParkourAction* NewAction)
-{
-	if (CurrentAction)
-	{
-		CurrentAction->OnEnd();	
-	}
-
-	CurrentAction = NewAction;
-
-	NewAction->OnStart();
-}
 
 void UParkourManager::UpdateState(EParkourStateType InputType)
 {

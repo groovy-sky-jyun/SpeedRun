@@ -45,4 +45,5 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Physics")
 	bool IsWalk() const;
+
 };

@@ -43,13 +43,13 @@ void UParkourComponent::BeginPlay()
 		if (Movement)
 		{
 			// 1. ¾É±â È°¼ºÈ­
-			Movement->GetNavAgentPropertiesRef().bCanCrouch = true;
+			//Movement->GetNavAgentPropertiesRef().bCanCrouch = true;
 
-			DefaultCrouchedHalfHeight = Movement->CrouchedHalfHeight;
+			//DefaultCrouchedHalfHeight = Movement->CrouchedHalfHeight;
 
 			// 2. ¾É¾ÒÀ» ¶§ Ä¸½¶ ³ôÀÌ, ¼Óµµ ¼³Á¤
-			Movement->MaxWalkSpeedCrouched = MaxCrouchSpeed;
-			Movement->CrouchedHalfHeight = CrouchedHalfHeight;
+			//Movement->MaxWalkSpeedCrouched = MaxCrouchSpeed;
+			//Movement->CrouchedHalfHeight = CrouchedHalfHeight;
 		}
 		if (Capsule)
 		{

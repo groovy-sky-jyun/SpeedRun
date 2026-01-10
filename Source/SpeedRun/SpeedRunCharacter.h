@@ -40,9 +40,19 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UMotionWarpingComponent> MotionWarpingComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UParkourMovementComponent> ParkourMovementComponent;
+
 
 public:
 	explicit ASpeedRunCharacter(const FObjectInitializer& ObjectInitializer);	
+
+	virtual void PostInitializeComponents() override;
+
+
+private:
+	UPROPERTY(EditAnywhere, Category = "Input|Dash")
+	float DashDistance = 2000.f;
 
 
 protected:
