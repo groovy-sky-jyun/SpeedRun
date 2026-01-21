@@ -14,10 +14,16 @@ class UInputAction;
 struct FInputActionValue;
 
 
-/**
- *  A simple player-controllable third person character
- *  Implements a controllable orbiting camera
- */
+UENUM(BlueprintType)
+enum class EInputType : uint8
+{
+	NONE,
+	MOVE,
+	UP,
+	DOWN,
+	SPRINT,
+	INTERACT
+};
 
 UCLASS(abstract)
 class ASpeedRunCharacter : public ACharacter

@@ -3,7 +3,7 @@
 
 #include "ParkourHang.h"
 #include "SpeedRunCharacter.h"
-#include "GameFramework/CharacterMovementComponent.h"
+#include "ParkourMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "ParkourManager.h"
 #include "Animation/AnimMontage.h"
@@ -19,9 +19,17 @@ void UParkourHang::Initialize(ASpeedRunCharacter* OwnerPlayer, UParkourManager* 
 
 bool UParkourHang::CheckVisibleToAction()
 {
+	DetectWall();
+	return false;
+	/*
 	float InitialZOffset = Movement->IsFalling() ? InitialZOffset_Falling : InitialZOffset_Grounded;
 	float TraceVertical = Movement->IsFalling() ? TraceVertical_Falling : TraceVertical_Grounded;
-	return CheckDetectToLedge(InitialZOffset, TraceDistanceH, TraceVertical);
+
+	if (Movement->IsFalling())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("IS FALLING"));
+	}
+	return CheckDetectToLedge(InitialZOffset, TraceDistanceH, TraceVertical);*/
 }
 
 void UParkourHang::OnStart()
@@ -39,7 +47,7 @@ void UParkourHang::OnEnd()
 	UE_LOG(LogTemp, Warning, TEXT("ParkourHang::OnEnd"));
 }
 
-bool UParkourHang::CheckDetectToLedge(float InitialZOffset, float TraceDistance, float TraceVertical)
+bool UParkourHang::CheckDetectToLedge(float InitialZOffset, float TraceDistance, float TraceVertical, float RightOffset)
 {
 	FHitResult HitResult_H;
 	int TraceMax_H = 8;
@@ -50,11 +58,16 @@ bool UParkourHang::CheckDetectToLedge(float InitialZOffset, float TraceDistance,
 	for (TraceIndex = 0; TraceIndex < TraceMax_H; TraceIndex++)
 	{
 		FHitResult HitResult;
+
 		float ZOffset = InitialZOffset + (TraceIndex * TraceVertical);
-		FVector StartLocation = Player->GetActorLocation() + FVector(0.f, 0.f, ZOffset);
+		FVector RightVector = Player->GetActorRightVector() * RightOffset * 40.f;
+
+		FVector StartLocation = Player->GetActorLocation() + FVector(0.f, 0.f, ZOffset) + RightVector;
 		FVector EndLocation = StartLocation + (Player->GetActorForwardVector() * TraceDistance);
+
 		FCollisionQueryParams Params;
 		Params.AddIgnoredActor(Player);
+
 		bool bHorizontalHit = GetPlayerWorld()->SweepSingleByChannel(HitResult, StartLocation, EndLocation, FQuat::Identity, ECollisionChannel::ECC_GameTraceChannel1, FCollisionShape::MakeSphere(SphereRadius), Params);
 
 		FRotator CapsuleRotator = Player->GetActorForwardVector().Rotation();
@@ -63,7 +76,7 @@ bool UParkourHang::CheckDetectToLedge(float InitialZOffset, float TraceDistance,
 		if (!bHorizontalHit) break;
 		else 
 		{
-			//DrawDebugCapsule(GetPlayerWorld(), (StartLocation + HitResult.Location) * 0.5, TraceDistance * 0.5, SphereRadius, CapsuleRotator.Quaternion(), FColor::Blue, false, 2.0f);
+			DrawDebugCapsule(GetPlayerWorld(), (StartLocation + HitResult.Location) * 0.5, TraceDistance * 0.5, SphereRadius, CapsuleRotator.Quaternion(), FColor::Blue, false, 2.0f);
 
 			HitResult_H = HitResult; 
 		}
@@ -77,7 +90,7 @@ bool UParkourHang::CheckDetectToLedge(float InitialZOffset, float TraceDistance,
 		Params.AddIgnoredActor(Player);
 		bool bVerticalHit = GetPlayerWorld()->SweepSingleByChannel(HitResult_V, HitResult_H.ImpactPoint + FVector(0.f, 0.f, 20.f), HitResult_H.ImpactPoint, FQuat::Identity, ECollisionChannel::ECC_GameTraceChannel1, FCollisionShape::MakeSphere(SphereRadius), Params);
 
-		//DrawDebugSphere(GetPlayerWorld(), HitResult_V.Location, SphereRadius, 12, FColor::Yellow, false, 2.0f);
+		DrawDebugSphere(GetPlayerWorld(), HitResult_V.Location, SphereRadius, 12, FColor::Yellow, false, 2.0f);
 
 		// if Distance is 0, the trace started inside an wall (InitialOverlap).
 		if (bVerticalHit && HitResult_V.Distance > 0)
@@ -118,8 +131,6 @@ void UParkourHang::HangOnLedge()
 
 	
 	// 4. MotionWarping ¼³Á¤
-	UAnimInstance* AnimInstance = Player->GetMesh()->GetAnimInstance();
-
 	ParkourManager->SetOverrideFootIK(true);
 
 	if (!Movement->IsFalling())
@@ -232,7 +243,7 @@ void UParkourHang::FindLedgeHandIKLocation()
 	FVector StartLocationL = DetectLedgeLocation + FVector(0.f, 0.f, 50.f) + (HandOffset * -1);
 	FVector EndLocationL = StartLocationL + FVector(0.f, 0.f, -100.f);
 	bool bHitLedgeHandL = GetPlayerWorld()->LineTraceSingleByChannel(HitResultL, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
-	DrawDebugLine(GetPlayerWorld(), StartLocationL, EndLocationL, FColor::Red, false, 2.f, 0, 1.f);
+	DrawDebugLine(GetPlayerWorld(), StartLocationL, EndLocationL, FColor::Red, true, 5.f, 0, 1.f);
 
 	// Check the InitialOverlap.
 	if (bHitLedgeHandL && HitResultL.Distance > 0)
@@ -247,7 +258,7 @@ void UParkourHang::FindLedgeHandIKLocation()
 	FVector StartLocationR = DetectLedgeLocation + FVector(0.f, 0.f, 50.f) + HandOffset;
 	FVector EndLocationR = StartLocationR + FVector(0.f, 0.f, -100.f);
 	bool bHitLedgeHandR = GetPlayerWorld()->LineTraceSingleByChannel(HitResultR, StartLocationR, EndLocationR, ECollisionChannel::ECC_GameTraceChannel1);
-	DrawDebugLine(GetPlayerWorld(), StartLocationR, EndLocationR, FColor::Red, false, 2.f, 0, 1.f);
+	DrawDebugLine(GetPlayerWorld(), StartLocationR, EndLocationR, FColor::Red, true, 5.f, 0, 1.f);
 
 	// Check the InitialOverlap.
 	if (bHitLedgeHandR && HitResultR.Distance > 0)

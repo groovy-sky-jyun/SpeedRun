@@ -4,25 +4,31 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
+#include "SpeedRunCharacter.h"
 #include "ParkourAction.generated.h"
 
-class ASpeedRunCharacter;
-class UCharacterMovementComponent;
+//class UCharacterMovementComponent;
+class UParkourMovementComponent;
 class UCapsuleComponent;
 class UParkourManager;
 class UMotionWarpingComponent;
 class IParkourInputType;
 
-UENUM(BlueprintType)
-enum class EParkourStateType : uint8
+USTRUCT(BlueprintType)
+struct FDetectWallInfo
 {
-	None,
-	Up,
-	Down,
-	Sprint,
-	Interact
-};
+	GENERATED_BODY()
 
+public:
+	UPROPERTY(BlueprintReadOnly)
+	bool bHit = false;
+
+	UPROPERTY(BlueprintReadOnly)
+	FVector HitLocation = FVector::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly)
+	FVector HitNormal = FVector::ZeroVector;
+};
 
 UCLASS(Abstract, EditInlineNew, Blueprintable)
 class SPEEDRUN_API UParkourAction : public UObject
@@ -31,14 +37,11 @@ class SPEEDRUN_API UParkourAction : public UObject
 	
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "ActionType")
-	EParkourStateType InputType = EParkourStateType::None;
-
 	UPROPERTY()
 	TObjectPtr<ASpeedRunCharacter> Player;
 
 	UPROPERTY()
-	TObjectPtr<UCharacterMovementComponent> Movement;
+	TObjectPtr<UParkourMovementComponent> Movement;
 
 	UPROPERTY()
 	TObjectPtr<UCapsuleComponent> Capsule;
@@ -48,6 +51,13 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<UMotionWarpingComponent> WarpComponent;
+
+	UPROPERTY()
+	TObjectPtr<UCapsuleComponent> CapsuleComponent;
+
+	UPROPERTY()
+	TObjectPtr<UAnimInstance> AnimInstance;
+
 
 	float CapsuleHalfHeight;
 
@@ -66,8 +76,33 @@ public:
 	virtual void OnEnd() {};
 
 
+
+public:
+	UFUNCTION()
+	FVector MoveVectorUpward(FVector Vector, float ZOffset);
+
+	UFUNCTION()
+	FVector MoveVectorDownward(FVector Vector, float ZOffset);
+
+	UFUNCTION()
+	FVector MoveVectorForward(FVector Vector, FRotator Rotation, float Distance);
+
+	UFUNCTION()
+	FVector MoveVectorBackward(FVector Vector, FRotator Rotation, float Distance);
+
+	UFUNCTION()
+	FVector MoveVectorLeft(FVector Vector, FRotator Rotation, float Distance);
+
+	UFUNCTION()
+	FVector MoveVectorRight(FVector Vector, FRotator Rotation, float Distance);
+	
+	UFUNCTION()
+	FRotator ReverseNormal(FVector Normal);
+	
+	UFUNCTION()
+	FDetectWallInfo DetectWall();
+
+
 public:
 	const UWorld* GetPlayerWorld();
-
-	EParkourStateType GetInputType() { return InputType; }
 };

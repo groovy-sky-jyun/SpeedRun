@@ -31,11 +31,19 @@ protected:
 	TArray<UInputMappingContext*> DefaultMappingContexts;
 
 	UPROPERTY(EditAnywhere, Category = "InputMappingContext")
-	TObjectPtr<UInputMappingContext> ParkourMappingContext;
+	TArray<UInputMappingContext*> ParkourMappingContexts;
+
 
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "InputMappingContext")
 	void UpdateParkourMappingContext(bool Value);
 
+	UFUNCTION(BlueprintCallable, Category = "InputMappingContext")
+	bool HasParkourIMC();
+
+
+private:
+	UPROPERTY()
+	bool bHasParkourIMC;
 };

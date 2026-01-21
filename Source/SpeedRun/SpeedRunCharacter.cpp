@@ -55,7 +55,8 @@ void ASpeedRunCharacter::PostInitializeComponents()
 
 void ASpeedRunCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) 
+	{
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::HandleLook);
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASpeedRunCharacter::HandleMove);
 
@@ -63,6 +64,11 @@ void ASpeedRunCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(DownAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleDown);
 		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleDash);
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleInteract);
+
+		if (ParkourComponent)
+		{
+			ParkourComponent->SetupParkourInputComponent(EnhancedInputComponent);
+		}
 	}
 	else
 	{
@@ -86,21 +92,19 @@ void ASpeedRunCharacter::HandleMove(const FInputActionValue& Value)
 
 void ASpeedRunCharacter::HandleUp(const FInputActionValue& Value)
 {
-	if (ParkourComponent && ParkourComponent->TryDetectParkour(EParkourStateType::Up))
+	/*if (ParkourComponent)
 	{
-		return;
-	}
+		if (ParkourComponent->CanParkourJump(Value))
+		{
+			return;
+		}
+	}*/
 	
 	DoUp();
 }
 
 void ASpeedRunCharacter::HandleDown(const FInputActionValue& Value)
 {
-	if (ParkourComponent && ParkourComponent->TryDetectParkour(EParkourStateType::Down))
-	{
-		return;
-	}
-
 	DoDown();
 }
 

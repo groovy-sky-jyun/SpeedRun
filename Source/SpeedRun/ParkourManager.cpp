@@ -5,6 +5,10 @@
 #include "SpeedRunCharacter.h"
 #include "ParkourAction.h"
 #include "SpeedRunPlayerController.h"
+#include "ParkourHangUp.h"
+#include "ParkourDrop.h"
+#include "ParkourHang.h"
+#include "ParkourShimmy.h"
 
 
 UParkourManager::UParkourManager()
@@ -18,17 +22,18 @@ void UParkourManager::BeginPlay()
 
 	Player = Cast<ASpeedRunCharacter>(GetOwner());
 
+	if (Player)
+	{
+		PlayerController = Cast<ASpeedRunPlayerController>(Player->GetController());
+	}
+
 	for (UParkourAction* Action : ActionList)
 	{
 		if (Action)
 		{
 			Action->Initialize(Player, this);
-
-			InputActionMap.FindOrAdd(Action->GetInputType()).Add(Action);
 		}
 	}
-
-	CurrentStateType = EParkourStateType::None;
 }
 
 void UParkourManager::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -36,14 +41,119 @@ void UParkourManager::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-
-bool UParkourManager::TryDetectParkour(EParkourStateType InputType)
+void UParkourManager::SetupParkourInputComponent(UEnhancedInputComponent* EnhancedInputComponent)
 {
-	if (UParkourAction* NewAction = CheckPlayAction(InputType))
+	if (EnhancedInputComponent)
 	{
-		SwitchToParkourInput(true);
-		
-		PlayAction(NewAction);
+		EnhancedInputComponent->BindAction(LedgeHangUpAction, ETriggerEvent::Started, this, &UParkourManager::HandleLedgeHangUp);
+		EnhancedInputComponent->BindAction(LedgeShimmyAction, ETriggerEvent::Triggered, this, &UParkourManager::HandleLedgeShimmy);
+		EnhancedInputComponent->BindAction(LedgeDropAction, ETriggerEvent::Started, this, &UParkourManager::HandleLedgeDrop);
+		EnhancedInputComponent->BindAction(ParkourJumpAction, ETriggerEvent::Started, this, &UParkourManager::HandleParkourJump);
+	}
+}
+
+
+void UParkourManager::HandleLedgeHangUp(const FInputActionValue& Value)
+{
+	for (auto* ParkourAction : ActionList)
+	{
+		if (UParkourHangUp* ParkourHangUp = Cast<UParkourHangUp>(ParkourAction))
+		{
+			if (ParkourHangUp->CheckVisibleToAction())
+			{
+				CurrentAction = ParkourHangUp;
+				ParkourHangUp->OnStart();
+			}
+			
+		}
+	}
+}
+
+void UParkourManager::HandleLedgeShimmy(const FInputActionValue& Value)
+{
+	FVector2D MovementVector = Value.Get<FVector2D>();
+
+	// find out which way is forward
+	const FRotator Rotation = PlayerController->GetControlRotation();
+	const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+	// get right vector 
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+	// add movement
+	for (auto* ParkourAction : ActionList)
+	{
+		if (UParkourShimmy* ParkourShimmy = Cast<UParkourShimmy>(ParkourAction))
+		{
+			if (ParkourShimmy->CheckVisibleToAction(RightDirection, MovementVector.X))
+			{
+				CurrentAction = ParkourShimmy;
+				ParkourShimmy->OnStart();
+			}
+		}
+	}
+}
+
+
+void UParkourManager::HandleLedgeDrop(const FInputActionValue& Value)
+{
+	for (auto* ParkourAction : ActionList)
+	{
+		if (UParkourDrop* ParkourDrop = Cast<UParkourDrop>(ParkourAction))
+		{
+			if (ParkourDrop->CheckVisibleToAction())
+			{
+				CurrentAction = ParkourDrop;
+				ParkourDrop->OnStart();
+				PlayerController->UpdateParkourMappingContext(false);
+			}
+		}
+	}
+}
+
+void UParkourManager::HandleParkourJump(const FInputActionValue& Value)
+{
+	for (auto* ParkourAction : ActionList)
+	{
+		if (UParkourHang* ParkourHang = Cast<UParkourHang>(ParkourAction))
+		{
+			if (ParkourHang->CheckVisibleToAction())
+			{
+				CurrentAction = ParkourHang;
+				ParkourHang->OnStart();
+				PlayerController->UpdateParkourMappingContext(true);
+			}
+		}
+	}
+
+}
+
+bool UParkourManager::CanParkourJump(const FInputActionValue& Value)
+{
+	for (auto* ParkourAction : ActionList)
+	{
+		if (UParkourHang* ParkourHang = Cast<UParkourHang>(ParkourAction))
+		{
+			if (ParkourHang->CheckVisibleToAction())
+			{
+				ParkourHang->OnStart();
+				PlayerController->UpdateParkourMappingContext(true);
+
+				return true;
+			}
+			return false;
+		}
+	}
+	return false;
+}
+
+
+/* 조건 만족하는 Action 있다면 실행
+bool UParkourManager::TryNextParkourAction(EInputType InputType)
+{
+	if (UParkourAction* ParkourAction = FindNextAction(InputType))
+	{
+		OnStartParkourAction(ParkourAction);
 
 		return true;
 	}
@@ -51,26 +161,26 @@ bool UParkourManager::TryDetectParkour(EParkourStateType InputType)
 	return false;
 }
 
-UParkourAction* UParkourManager::CheckPlayAction(EParkourStateType InputType)
+/* 실행 조건이 만족되는 다음 Action 찾기
+UParkourAction* UParkourManager::FindNextAction(EInputType InputType)
 {
-	// 현재 상태에서 action을 변경(연계나 취소)할 수 있는지 확인하는 로직 추가
-
 	if (TArray<UParkourAction*>* InputActionList = InputActionMap.Find(InputType))
 	{
-		for (UParkourAction* Action : *InputActionList)
+		for (UParkourAction* NewAction : *InputActionList)
 		{
 			// 우선순위대로 실행 조건 체크
-			if (Action && Action->CheckVisibleToAction())
+			if (NewAction && NewAction->CheckVisibleToAction())
 			{
-				return Action;
+				return NewAction;
 			}
 		}
 	}
 
 	return nullptr;
 }
+*/
 
-void UParkourManager::PlayAction(UParkourAction* NewAction)
+void UParkourManager::OnStartParkourAction(UParkourAction* NewAction)
 {
 	if (CurrentAction)
 	{
@@ -79,95 +189,31 @@ void UParkourManager::PlayAction(UParkourAction* NewAction)
 
 	CurrentAction = NewAction;
 
+	if (PlayerController)
+	{
+		if (!PlayerController->HasParkourIMC())
+		{
+			PlayerController->UpdateParkourMappingContext(true);
+		}
+	}
+
 	NewAction->OnStart();
 }
 
-
-void UParkourManager::SwitchToParkourInput(bool Value)
+void UParkourManager::OnEndParkourAction()
 {
-	if (ASpeedRunPlayerController* PC = Cast<ASpeedRunPlayerController>(Player->GetController()))
+	if (CurrentAction)
 	{
-		PC->UpdateParkourMappingContext(Value);
-	}
-}
-
-
-void UParkourManager::SetupParkourInputComponent(UInputComponent* PlayerInputComponent)
-{
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
-	{
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &UParkourManager::HandleMove);
-		EnhancedInputComponent->BindAction(UpAction, ETriggerEvent::Started, this, &UParkourManager::HandleUp_Start);
-		EnhancedInputComponent->BindAction(UpAction, ETriggerEvent::Completed, this, &UParkourManager::HandleUp_End);
-		EnhancedInputComponent->BindAction(DownAction, ETriggerEvent::Started, this, &UParkourManager::HandleDown);
-		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &UParkourManager::HandleDash);
-	}
-}
-
-void UParkourManager::HandleMove(const FInputActionValue& Value)
-{
-	FVector2D MovementVector = Value.Get<FVector2D>();
-
-	//DoMove(MovementVector.X, MovementVector.Y);
-}
-
-
-void UParkourManager::HandleUp_Start(const FInputActionValue& Value)
-{
-	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Up);
-
-	if (NewAction != nullptr)
-	{
-		PlayAction(NewAction);
-	}
-	else
-	{
-		Player->Jump();
-
-		NewAction = CheckPlayAction(EParkourStateType::Up);
-
-		if (NewAction != nullptr)
-		{
-			PlayAction(NewAction);
-		}
-	}	
-}
-
-void UParkourManager::HandleUp_End(const FInputActionValue& Value)
-{
-	if (CurrentAction == nullptr)
-	{
-		Player->StopJumping();
+		CurrentAction->OnEnd();
 	}
 
 	CurrentAction = nullptr;
-}
 
-void UParkourManager::HandleDown(const FInputActionValue& Value)
-{
-	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Down);
-
-	if (NewAction != nullptr)
+	if (PlayerController)
 	{
-		PlayAction(NewAction);
+		if (PlayerController->HasParkourIMC())
+		{
+			PlayerController->UpdateParkourMappingContext(false);
+		}
 	}
-	
-}
-
-void UParkourManager::HandleDash(const FInputActionValue& Value)
-{
-	UParkourAction* NewAction = CheckPlayAction(EParkourStateType::Sprint);
-
-	if (NewAction != nullptr)
-	{
-		PlayAction(NewAction);
-	}
-}
-
-
-
-
-void UParkourManager::UpdateState(EParkourStateType InputType)
-{
-	CurrentStateType = InputType;
 }

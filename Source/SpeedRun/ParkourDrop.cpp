@@ -3,7 +3,7 @@
 
 #include "ParkourDrop.h"
 #include "ParkourManager.h"
-#include "GameFramework/CharacterMovementComponent.h"
+#include "ParkourMovementComponent.h"
 
 
 void UParkourDrop::Initialize(ASpeedRunCharacter* OwnerPlayer, UParkourManager* ParkourComponent)
@@ -28,6 +28,8 @@ void UParkourDrop::OnStart()
 	ParkourManager->SetOverrideHandIK(false);
 
 	Movement->SetMovementMode(EMovementMode::MOVE_Falling);
+
+	ParkourManager->OnEndParkourAction();
 }
 
 void UParkourDrop::OnUpdate()
@@ -36,4 +38,5 @@ void UParkourDrop::OnUpdate()
 
 void UParkourDrop::OnEnd()
 {
+	
 }

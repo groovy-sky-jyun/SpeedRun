@@ -9,8 +9,11 @@
 #include "ParkourAction.h"
 #include "ParkourManager.generated.h"
 
+
+class ASpeedRunPlayerController;
 class UInputAction;
 struct FInputActionValue;
+
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -21,82 +24,56 @@ class SPEEDRUN_API UParkourManager : public UActorComponent
 public:	
 	UParkourManager();
 
+
 protected:
 	virtual void BeginPlay() override;
 
-public:	
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-	void SetupParkourInputComponent(class UInputComponent* ParkourInputComponent);
-
-	UFUNCTION(BlueprintCallable)
-	bool TryDetectParkour(EParkourStateType InputType);
-
-	UFUNCTION(BlueprintCallable)
-	void SwitchToParkourInput(bool Value);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Owner")
 	TObjectPtr<ASpeedRunCharacter> Player;
 
-	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Setting|ParkourList")
-	TArray<UParkourAction*> ActionList;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Owner")
+	TObjectPtr<ASpeedRunPlayerController> PlayerController;
 
 
+public:	
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-private:
-	TMap<EParkourStateType, TArray<UParkourAction*>> InputActionMap; 
-
-	UParkourAction* CurrentAction;
-
-	EParkourStateType CurrentStateType;
-
+	void SetupParkourInputComponent(class UEnhancedInputComponent* EnhancedInputComponent);
 
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "Setting|Input")
-	UInputAction* MoveAction;
+	UInputAction* LedgeHangUpAction;
 
 	UPROPERTY(EditAnywhere, Category = "Setting|Input")
-	UInputAction* UpAction;
+	UInputAction* LedgeShimmyAction;
 
 	UPROPERTY(EditAnywhere, Category = "Setting|Input")
-	UInputAction* DownAction;
+	UInputAction* LedgeDropAction;
 
 	UPROPERTY(EditAnywhere, Category = "Setting|Input")
-	UInputAction* DashAction;
+	UInputAction* ParkourJumpAction;
+
 
 
 public: /* Called when the Player State Changes for input key */
 	UFUNCTION(BlueprintCallable, Category = "InputActions")
-	void HandleMove(const FInputActionValue& Value);
+	void HandleLedgeHangUp(const FInputActionValue& Value);
 
 	UFUNCTION(BlueprintCallable, Category = "InputActions")
-	void HandleUp_Start(const FInputActionValue& Value);
+	void HandleLedgeShimmy(const FInputActionValue& Value);
+
 
 	UFUNCTION(BlueprintCallable, Category = "InputActions")
-	void HandleUp_End(const FInputActionValue& Value);
+	void HandleLedgeDrop(const FInputActionValue& Value);
 
 	UFUNCTION(BlueprintCallable, Category = "InputActions")
-	void HandleDown(const FInputActionValue& Value);
+	void HandleParkourJump(const FInputActionValue& Value);
 
 	UFUNCTION(BlueprintCallable, Category = "InputActions")
-	void HandleDash(const FInputActionValue& Value);
-
-
-
-public:
-	UFUNCTION()
-	UParkourAction* CheckPlayAction(EParkourStateType InputType);
-
-	UFUNCTION()
-	void PlayAction(UParkourAction* NewAction);
-
-	UFUNCTION()
-	void UpdateState(EParkourStateType InputType);
-
-
-
+	bool CanParkourJump(const FInputActionValue& Value);
 
 
 private:
@@ -125,40 +102,68 @@ private:
 
 public:
 	/* State */
-	FORCEINLINE bool GetCanMove() const { return bCanMove; }
+	FORCEINLINE bool GetCanMove() { return bCanMove; }
 	FORCEINLINE void SetCanMove(bool Value)  { bCanMove = Value; }
 
-	FORCEINLINE bool GetIsCrouch() const { return bIsCrouch; }
+	FORCEINLINE bool GetIsCrouch() { return bIsCrouch; }
 	FORCEINLINE void SetIsCrouch(bool Value) { bIsCrouch = Value; }
 
-	FORCEINLINE bool GetIsOnLedge() const { return bIsOnLedge; }
+	FORCEINLINE bool GetIsOnLedge() { return bIsOnLedge; }
 	FORCEINLINE void SetIsOnLedge(bool Value) { bIsOnLedge = Value; }
 
 
 	/* FootIK */
-	FORCEINLINE bool GetOverrideFootIK() const { return bOverrideFootIK; }
+	FORCEINLINE bool GetOverrideFootIK() { return bOverrideFootIK; }
 	FORCEINLINE void SetOverrideFootIK(bool Value) { bOverrideFootIK = Value; }
 
-	FORCEINLINE bool GetLedgeHasFootSurfaceR() const { return bLedgeHasFootSurfaceR; }
+	FORCEINLINE bool GetLedgeHasFootSurfaceR() { return bLedgeHasFootSurfaceR; }
 	FORCEINLINE void SetLedgeHasFootSurfaceR(bool Value) { bLedgeHasFootSurfaceR = Value; }
 
-	FORCEINLINE bool GetLedgeHasFootSurfaceL() const { return bLedgeHasFootSurfaceL; }
+	FORCEINLINE bool GetLedgeHasFootSurfaceL() { return bLedgeHasFootSurfaceL; }
 	FORCEINLINE void SetLedgeHasFootSurfaceL(bool Value) { bLedgeHasFootSurfaceL = Value; }
 
 
 	/* HandIK */
-	FORCEINLINE bool GetOverrideHandIK() const { return bOverrideHandIK; }
+	FORCEINLINE bool GetOverrideHandIK() { return bOverrideHandIK; }
 	FORCEINLINE void SetOverrideHandIK(bool Value) { bOverrideHandIK = Value; }
 
-	FORCEINLINE bool GetLedgeHasHandSurfaceL() const { return bLedgeHasHandSurfaceL; }
+	FORCEINLINE bool GetLedgeHasHandSurfaceL() { return bLedgeHasHandSurfaceL; }
 	FORCEINLINE void SetLedgeHasHandSurfaceL(bool Value) { bLedgeHasHandSurfaceL = Value; }
 
-	FORCEINLINE bool GetLedgeHasHandSurfaceR() const { return bLedgeHasHandSurfaceR; }
+	FORCEINLINE bool GetLedgeHasHandSurfaceR() { return bLedgeHasHandSurfaceR; }
 	FORCEINLINE void SetLedgeHasHandSurfaceR(bool Value) { bLedgeHasHandSurfaceR = Value; }
 
-	FORCEINLINE FVector GetHandIKLocationR() const { return HandIKLocationR; }
+	FORCEINLINE FVector GetHandIKLocationR() { return HandIKLocationR; }
 	FORCEINLINE void SetHandIKLocationR(FVector NewLocation) { HandIKLocationR = NewLocation; }
 
-	FORCEINLINE FVector GetHandIKLocationL() const { return HandIKLocationL; }
+	FORCEINLINE FVector GetHandIKLocationL() { return HandIKLocationL; }
 	FORCEINLINE void SetHandIKLocationL(FVector NewLocation) { HandIKLocationL = NewLocation; }
+
+
+
+public:
+
+	/*
+	UFUNCTION(BlueprintCallable)
+	bool TryNextParkourAction(EInputType InputType);
+
+	UFUNCTION(BlueprintCallable)
+	UParkourAction* FindNextAction(EInputType InputType);
+	*/
+	UFUNCTION(BlueprintCallable)
+	void OnStartParkourAction(UParkourAction* NewAction);
+
+	UFUNCTION(BlueprintCallable)
+	void OnEndParkourAction();
+
+
+
+protected:
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Setting|Actions")
+	TArray<UParkourAction*> ActionList;
+
+	TMap<EInputType, TArray<UParkourAction*>> InputActionMap;
+
+	UParkourAction* CurrentAction;
+
 };

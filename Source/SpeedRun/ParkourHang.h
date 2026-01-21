@@ -27,9 +27,9 @@ public:
 
 
 
-private:
+protected:
 	UFUNCTION()
-	bool CheckDetectToLedge(float InitialZOffset, float TraceDistance, float TraceVertical);
+	bool CheckDetectToLedge(float InitialZOffset, float TraceDistance, float TraceVertical, float RightOffset=0);
 
 	UFUNCTION()
 	void HangOnLedge();

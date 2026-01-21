@@ -38,13 +38,25 @@ void ASpeedRunPlayerController::UpdateParkourMappingContext(bool Value)
 	{
 		if (Value)
 		{
-			Subsystem->AddMappingContext(ParkourMappingContext, 1);
+			for (UInputMappingContext* ParkourContext : ParkourMappingContexts)
+			{
+				Subsystem->AddMappingContext(ParkourContext, 1);
+			}
+			bHasParkourIMC = true;
 		}
 		else
 		{
-			Subsystem->RemoveMappingContext(ParkourMappingContext);
+			for (UInputMappingContext* ParkourContext : ParkourMappingContexts)
+			{
+				Subsystem->RemoveMappingContext(ParkourContext);
+			}
+			bHasParkourIMC = false;
 		}
 	}
-	
+}
+
+bool ASpeedRunPlayerController::HasParkourIMC()
+{
+	return bHasParkourIMC;
 }
 

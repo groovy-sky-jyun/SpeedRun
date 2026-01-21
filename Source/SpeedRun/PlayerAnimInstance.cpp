@@ -98,15 +98,14 @@ void UPlayerAnimInstance::AnimNotify_ToHangEnd()
 
 void UPlayerAnimInstance::AnimNotify_ClimbUpEnd()
 {
-	/*
-	ASpeedRunCharacter* Player = Cast<ASpeedRunCharacter>(Character);
-	Player->SetActorEnableCollision(true);
+	ParkourManager->OnEndParkourAction();
 
-	Player->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Falling);
+	Player->SetActorEnableCollision(true);
+	Movement->SetMovementMode(EMovementMode::MOVE_Walking);
 
 	//Player->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 
 	Player->GetParkourManager()->SetCanMove(true);
 	bCanMove = true;
-	*/
+	
 }
