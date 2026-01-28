@@ -49,6 +49,13 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UParkourMovementComponent> ParkourMovementComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UParkourActionComponent> ParkourActionComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UParkourComponent> ParkourComponentTEST;
+
+
 
 public:
 	explicit ASpeedRunCharacter(const FObjectInitializer& ObjectInitializer);	
@@ -134,5 +141,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Components")
 	FORCEINLINE class UParkourManager* GetParkourManager() const { return ParkourComponent; }
+
+	UPROPERTY(EditAnywhere, Category = "TEST")
+	float ZOffset = 0.f;
+
 };
 

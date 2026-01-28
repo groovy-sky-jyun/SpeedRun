@@ -43,12 +43,12 @@ const UWorld* UParkourAction::GetPlayerWorld()
 
 FVector UParkourAction::MoveVectorUpward(FVector Vector, float ZOffset)
 {
-    return Vector + FVector(0.f, 0.f, ZOffset);;
+    return Vector + FVector(0.f, 0.f, ZOffset);
 }
 
 FVector UParkourAction::MoveVectorDownward(FVector Vector, float ZOffset)
 {
-    return Vector - FVector(0.f, 0.f, ZOffset);;
+    return Vector - FVector(0.f, 0.f, ZOffset);
 }
 
 FVector UParkourAction::MoveVectorForward(FVector Vector, FRotator Rotation, float Distance)

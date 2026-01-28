@@ -12,9 +12,11 @@
 #include "InputActionValue.h"
 #include "SpeedRun.h"
 #include "ParkourMovementComponent.h"
+#include "ParkourActionComponent.h"
 #include "ParkourManager.h"
 #include "MotionWarpingComponent.h" 
 #include "GameplayTagContainer.h"
+#include "ParkourComponent.h"
 
 ASpeedRunCharacter::ASpeedRunCharacter(const FObjectInitializer& ObjectInitializer) : Super(
 	ObjectInitializer.SetDefaultSubobjectClass<UParkourMovementComponent>(CharacterMovementComponentName))
@@ -42,7 +44,10 @@ ASpeedRunCharacter::ASpeedRunCharacter(const FObjectInitializer& ObjectInitializ
 
 	// Create Parkour Movement Component
 	ParkourComponent = CreateDefaultSubobject<UParkourManager>(TEXT("ParkourComponent"));
+	ParkourActionComponent = CreateDefaultSubobject<UParkourActionComponent>(TEXT("ParkourActionComponent"));
 	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarp"));
+
+	ParkourComponentTEST = CreateDefaultSubobject<UParkourComponent>(TEXT("ParkourComponentTEST"));
 }
 
 void ASpeedRunCharacter::PostInitializeComponents()
@@ -100,7 +105,16 @@ void ASpeedRunCharacter::HandleUp(const FInputActionValue& Value)
 		}
 	}*/
 	
-	DoUp();
+	//DoUp();
+
+	//ParkourComponentTEST->TryParkourAction();
+
+	FVector ForwardVector = GetActorForwardVector() * 50.f;
+	FHitResult HitResultL;
+	FVector StartLocationL = GetActorLocation() + FVector(0.f, 0.f, ZOffset);
+	FVector EndLocationL = StartLocationL + ForwardVector;
+	bool bHitFootSurfaceL = GetWorld()->LineTraceSingleByChannel(HitResultL, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
+	DrawDebugLine(GetWorld(), StartLocationL, EndLocationL, FColor::Red, false, 2.f, 0, 1.f);
 }
 
 void ASpeedRunCharacter::HandleDown(const FInputActionValue& Value)
@@ -180,4 +194,5 @@ void ASpeedRunCharacter::DoInteract()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Interact"));
 }
+
 
