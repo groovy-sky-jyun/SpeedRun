@@ -41,6 +41,40 @@ void UParkourMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 	}
 }
 
+
+bool UParkourMovementComponent::DoJump(bool bReplayingMoves, float DeltaTime)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Custom Jump Start"));
+	if (Super::DoJump(bReplayingMoves, DeltaTime))
+	{
+		
+		FVector ForwardDir = Player->GetActorForwardVector();
+		
+		Velocity.X = ForwardDir.X * JumpForwardImpulse;
+		Velocity.Y = ForwardDir.Y * JumpForwardImpulse;
+		
+
+		//ResetJumpValues();
+
+		return true;
+	}
+	return false;
+}
+
+
+void UParkourMovementComponent::SetJumpValues(float Gravity, float ZOffset, float Impulse)
+{
+	GravityScale = Gravity;
+	JumpZVelocity = ZOffset;
+	JumpForwardImpulse = Impulse;
+}
+
+void UParkourMovementComponent::ResetJumpValues()
+{
+	JumpZVelocity = 500.f;;
+	JumpForwardImpulse = 0.f;
+}
+
 float UParkourMovementComponent::GetSpeed() const
 {
 	return Velocity.Length();

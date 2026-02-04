@@ -17,6 +17,7 @@
 #include "MotionWarpingComponent.h" 
 #include "GameplayTagContainer.h"
 #include "ParkourComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 ASpeedRunCharacter::ASpeedRunCharacter(const FObjectInitializer& ObjectInitializer) : Super(
 	ObjectInitializer.SetDefaultSubobjectClass<UParkourMovementComponent>(CharacterMovementComponentName))
@@ -105,16 +106,43 @@ void ASpeedRunCharacter::HandleUp(const FInputActionValue& Value)
 		}
 	}*/
 	
-	//DoUp();
+	// DoUp();
+	
+	if (ParkourComponentTEST)
+	{
+		ParkourComponentTEST->HandleToJump();
+	}
+	//ParkourMovementComponent->SetJumpValues(Gravity, JumpZImpulse, JumpLaunchImpulse);
+	//Jump();
 
 	//ParkourComponentTEST->TryParkourAction();
 
-	FVector ForwardVector = GetActorForwardVector() * 50.f;
-	FHitResult HitResultL;
-	FVector StartLocationL = GetActorLocation() + FVector(0.f, 0.f, ZOffset);
-	FVector EndLocationL = StartLocationL + ForwardVector;
-	bool bHitFootSurfaceL = GetWorld()->LineTraceSingleByChannel(HitResultL, StartLocationL, EndLocationL, ECollisionChannel::ECC_GameTraceChannel1);
-	DrawDebugLine(GetWorld(), StartLocationL, EndLocationL, FColor::Red, false, 2.f, 0, 1.f);
+	/** Landing Surface Space Check *
+	FHitResult HitResult;
+	float Radius = 150.f;
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(this);
+
+	FVector Start = (GetActorLocation() + (GetActorForwardVector() * 50.f) ) - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() - Radius);
+	FVector End = Start + (GetActorForwardVector() * 250.f);
+	bool bDetectWall = UKismetSystemLibrary::SphereTraceSingle(
+		GetWorld(),
+		Start,
+		End, 
+		Radius,
+		UEngineTypes::ConvertToTraceType(ECC_Visibility), // Trace Channel
+		false,         // Trace Complex
+		ActorsToIgnore,
+		EDrawDebugTrace::ForDuration, // Draw Debug Type
+		HitResult,
+		true,          // Ignore Self
+		FLinearColor::Red,   // 디버그 선 색상
+		FLinearColor::Green, // 히트 시 색상
+		5.0f           // 디버그 선 유지 시간
+	);
+	*/
+
+
 }
 
 void ASpeedRunCharacter::HandleDown(const FInputActionValue& Value)
