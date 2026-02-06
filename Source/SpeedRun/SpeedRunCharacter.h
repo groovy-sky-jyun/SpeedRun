@@ -142,7 +142,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Components")
 	FORCEINLINE class UParkourManager* GetParkourManager() const { return ParkourComponent; }
 
+	UFUNCTION(BlueprintCallable, Category = "Components")
+	FORCEINLINE class UParkourMovementComponent* GetParkourMovement() const { return ParkourMovementComponent; }
 
+	
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="JumpImpulse")
 	float JumpZImpulse = 500.f;

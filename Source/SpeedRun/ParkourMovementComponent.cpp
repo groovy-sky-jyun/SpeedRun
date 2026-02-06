@@ -44,7 +44,6 @@ void UParkourMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 
 bool UParkourMovementComponent::DoJump(bool bReplayingMoves, float DeltaTime)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Custom Jump Start"));
 	if (Super::DoJump(bReplayingMoves, DeltaTime))
 	{
 		

@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
-#include "EnvironmentDataAsset.generated.h"
+#include "DA_EnvironmentTags.generated.h"
 
 USTRUCT(BlueprintType)
 struct FEnvironmentState
@@ -27,7 +27,7 @@ struct FEnvironmentState
 
 
 UCLASS(BlueprintType)
-class SPEEDRUN_API UEnvironmentDataAsset : public UPrimaryDataAsset
+class SPEEDRUN_API UDA_EnvironmentTags : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 	

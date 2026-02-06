@@ -112,35 +112,12 @@ void ASpeedRunCharacter::HandleUp(const FInputActionValue& Value)
 	{
 		ParkourComponentTEST->HandleToJump();
 	}
-	//ParkourMovementComponent->SetJumpValues(Gravity, JumpZImpulse, JumpLaunchImpulse);
-	//Jump();
+
+
 
 	//ParkourComponentTEST->TryParkourAction();
 
-	/** Landing Surface Space Check *
-	FHitResult HitResult;
-	float Radius = 150.f;
-	TArray<AActor*> ActorsToIgnore;
-	ActorsToIgnore.Add(this);
-
-	FVector Start = (GetActorLocation() + (GetActorForwardVector() * 50.f) ) - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() - Radius);
-	FVector End = Start + (GetActorForwardVector() * 250.f);
-	bool bDetectWall = UKismetSystemLibrary::SphereTraceSingle(
-		GetWorld(),
-		Start,
-		End, 
-		Radius,
-		UEngineTypes::ConvertToTraceType(ECC_Visibility), // Trace Channel
-		false,         // Trace Complex
-		ActorsToIgnore,
-		EDrawDebugTrace::ForDuration, // Draw Debug Type
-		HitResult,
-		true,          // Ignore Self
-		FLinearColor::Red,   // 디버그 선 색상
-		FLinearColor::Green, // 히트 시 색상
-		5.0f           // 디버그 선 유지 시간
-	);
-	*/
+	
 
 
 }
