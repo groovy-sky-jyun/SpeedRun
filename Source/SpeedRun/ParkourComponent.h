@@ -71,7 +71,7 @@ protected:
 
 	//===== DataAsset =====//
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
-	TArray<TObjectPtr<UDA_EnvironmentTags>> DA_EnvironmentTagss;
+	TArray<TObjectPtr<UDA_EnvironmentTags>> DA_EnvironmentTags;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
 	TArray<TObjectPtr<UDA_ParkourActionCategory>> ActionCategoryList;
@@ -151,11 +151,11 @@ private:
 
 	//===== 장애물 및 환경 감지 (Trace Logic) =====//
 	FHitResult IsDetectObstacle();
-	float GetObstacleGapValue(const FHitResult& DetectHitResult);
 	float GetObstacleHeightValue(const FHitResult& DetectHitResult);
+	float GetObstacleGapValue(const FHitResult& DetectHitResult);
 	float GetSurfaceGapValue();
-	FHitResult IsDetectLandingSurface();
-	FHitResult IsDetectToHorizontalTraces(float TraceCount, float Gap, float Distance, FVector Start, float Radius = 15.f);
+	FHitResult DetectToVerticalTraces(int32 TraceCount, float Gap, float Distance, FVector Start, FVector TraceDir, float Radius, bool bReturnHit) const;
+	FHitResult DetectToHorizontalTraces(int32 TraceCount, float Gap, float Distance, FVector Start, FVector TraceDir, float Radius, bool bReturnHit) const;
 	bool SphereTrace(FHitResult& HitResult, const FVector& Start, const FVector& End, float Radius) const;
 	bool LineTrace(FHitResult& HitResult, const FVector& Start, const FVector& End) const;
 };
