@@ -69,6 +69,7 @@ protected:
 	FGameplayTagContainer CurrenEnvironmentTags;
 	
 
+
 	//===== DataAsset =====//
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
 	TArray<TObjectPtr<UDA_EnvironmentTags>> DA_EnvironmentTags;
@@ -77,7 +78,10 @@ protected:
 	TArray<TObjectPtr<UDA_ParkourActionCategory>> ActionCategoryList;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
-	TObjectPtr<UDA_JumpAction> JumpOptionList;
+	TObjectPtr<UDA_JumpAction> JumpConfigs;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
+	TObjectPtr<UDA_JumpAction> BuildingJumpConfigs;
 
 
 
@@ -96,6 +100,16 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
 	FGameplayTag TagCategory_Jump;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
+	FGameplayTag TagCategory_BuildingJump;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
+	FGameplayTag TagCategory_Landing;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
+	FGameplayTag TagCategory_SurfaceSpace;
+
 
 
 	//===== Trace Setting Value =====//
@@ -154,8 +168,11 @@ private:
 	float GetObstacleHeightValue(const FHitResult& DetectHitResult);
 	float GetObstacleGapValue(const FHitResult& DetectHitResult);
 	float GetSurfaceGapValue();
-	FHitResult DetectToVerticalTraces(int32 TraceCount, float Gap, float Distance, FVector Start, FVector TraceDir, float Radius, bool bReturnHit) const;
+
 	FHitResult DetectToHorizontalTraces(int32 TraceCount, float Gap, float Distance, FVector Start, FVector TraceDir, float Radius, bool bReturnHit) const;
-	bool SphereTrace(FHitResult& HitResult, const FVector& Start, const FVector& End, float Radius) const;
-	bool LineTrace(FHitResult& HitResult, const FVector& Start, const FVector& End) const;
+	FHitResult DetectToVerticalTraces(int32 TraceCount, float Gap, float Distance, FVector Start, FVector TraceDir, float Radius, bool bReturnHit) const;
+	
+	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius) const;
+	FHitResult BoxTrace(const FVector& Start, const FVector& End, FRotator Rotation, FVector HalfSize) const;
+	FHitResult LineTrace(const FVector& Start, const FVector& End) const;
 };
