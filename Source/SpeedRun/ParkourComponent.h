@@ -77,11 +77,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
 	TArray<TObjectPtr<UDA_ParkourActionCategory>> ActionCategoryList;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Config")
 	TObjectPtr<UDA_JumpAction> JumpConfigs;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
-	TObjectPtr<UDA_JumpAction> BuildingJumpConfigs;
 
 
 
@@ -96,13 +93,13 @@ protected:
 	FGameplayTag TagCategory_SurfaceGap;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
+	FGameplayTag TagCategory_BuildingGap;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
 	FGameplayTag TagCategory_ObstacleHeight;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
 	FGameplayTag TagCategory_Jump;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
-	FGameplayTag TagCategory_BuildingJump;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
 	FGameplayTag TagCategory_Landing;
