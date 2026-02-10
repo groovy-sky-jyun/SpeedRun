@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
+#include "Templates/Function.h"
 #include "ParkourComponent.generated.h"
 
 class ASpeedRunCharacter;
@@ -20,7 +21,12 @@ class UDA_SphereTracesOption;
 class UDA_BoxTraceOption;
 class UDA_LineTraceOption;
 
-
+UENUM(BlueprintType)
+enum class ETraceDirection : uint8
+{
+	Horizontal,
+	Vertical
+};
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SPEEDRUN_API UParkourComponent : public UActorComponent
@@ -50,11 +56,14 @@ public:
 	void HandleToJump();
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	void DoParkourJump();
-
-	UFUNCTION(BlueprintCallable, Category = "Action")
 	void DoLanding();
 	
+
+protected:
+	UFUNCTION(BlueprintCallable, Category = "Action")
+	void SetupJumpPhysics();
+
+
 protected:
 	//===== 참조 및 상태 변수 =====//
 	UPROPERTY()
@@ -70,10 +79,10 @@ protected:
 	TObjectPtr<UMotionWarpingComponent> WarpComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Status")
-	FGameplayTagContainer CurrenActionTags;
+	FGameplayTagContainer CurrentActionTags;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Status")
-	FGameplayTagContainer CurrenEnvironmentTags;
+	FGameplayTagContainer CurrentEnvironmentTags;
 	
 
 
@@ -143,29 +152,45 @@ protected:
 
 
 private:
+	//===== Find DataAsset (feat.Tag) =====//
+	FGameplayTag FindChildActionTag(const FGameplayTag& ParentTag) const;
+	void UpdateEnvironmentTags(const FGameplayTag& TagCategory, float Value);
+	void AddActionTag(const FGameplayTag& TagCategory);
+	FGameplayTag SelectActionTagOnContext(const FGameplayTag& ActionCategory) const;
+	FJumpOption FindJumpOption(const FGameplayTag& NewTag) const;
+
+
 	//===== 장애물 및 환경 감지 =====//
 	bool DetectObstacle();
-
-
-
-	//===== Find DataAsset (feat.Tag) =====//
-	FGameplayTag FindCurrentActionTagForParentTag(FGameplayTag ParentTag) const;
-	void AddNewEnvironmentTag(FGameplayTag TagCategory, float Value);
-	FGameplayTag FindActionTagByEnvironmentTags(FGameplayTag ActionCategory) const;
-	FJumpOption GetJumpOption(FGameplayTag NewTag) const;
+	void MeasureObstacleDimensions();
+	void AnalyzeEdgeEnvironment();
+	void MeasureStepBoxWidth(const FVector& StepOverStart);
+	void MeasureBuildingGap(const FVector& PlayerFootLocation);
 
 
 
 	//===== Basic Trace Logic =====//
-	const UDA_SphereTracesOption* FindSpheresTraceOption(FGameplayTag TagCategory) const;
-	const UDA_BoxTraceOption* FindBoxTraceOption(FGameplayTag TagCategory) const;
-	const UDA_TraceOptions* FindLineTraceOption(FGameplayTag TagCategory) const;
+	template<typename T>
+	const T* GetTraceDA(const TArray<TObjectPtr<T>>& TraceOptionArray, FGameplayTag TagCategory) const
+	{
+		for (auto& Option : TraceOptionArray)
+		{
+			if (Option->CategoryTag.MatchesTag(TagCategory))
+			{
+				return Option.Get();
+			}
+		}
+		return nullptr;
+	}
+	const UDA_SphereTracesOption* GetTraceDA_Spheres(FGameplayTag TagCategory) const;
+	const UDA_BoxTraceOption* GetTraceDA_Box(FGameplayTag TagCategory) const;
+	const UDA_TraceOptions* GetTraceDA_Line(FGameplayTag TagCategory) const;
 
-	FHitResult DetectToHorTraces(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bReturnHit, bool bDrawDebug) const;
-	FHitResult DetectToVerTraces(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bReturnHit, bool bDrawDebug) const;
-
+	FHitResult DetectSphereTraces(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bReturnHit, ETraceDirection TraceDir, bool bDrawDebug) const;
 	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const;
 	FHitResult BoxTrace(FGameplayTag TagCategory, FVector Start, FVector Dir, FRotator Rotation, bool bDrawDebug) const;
 	FHitResult LineTraceVer(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bDrawDebug) const;
 	FHitResult LineTraceHor(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bDrawDebug) const;
+	FHitResult LineTrace(const FVector& Start, const FVector& End, bool bDrawDebug) const;
+	
 };
