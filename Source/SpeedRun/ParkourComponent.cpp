@@ -11,6 +11,9 @@
 #include "DA_EnvironmentTags.h"
 #include "DA_ParkourActionCategory.h"
 #include "DA_JumpAction.h"
+#include "DA_SphereTracesOption.h"
+#include "DA_BoxTraceOption.h" 
+#include "DA_LineTraceOption.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -74,102 +77,84 @@ void UParkourComponent::TryParkourAction()
 
 void UParkourComponent::HandleToJump()
 {
-	// 환경 태그 초기화
+	UE_LOG(LogTemp, Warning, TEXT("======RESET======"));
 	CurrenEnvironmentTags.Reset();
-	CurrenActionTags.Reset();
-
 	// Landing 조건 확인 및 실행
 	if (ParkourMovement->IsFalling())
 	{
-		/** 1.Detect Surface to Foot Under **/
-		FVector FootLocation = Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-		FVector FrontOffset = Player->GetActorForwardVector() * 10.f;
-		FHitResult SurfaceHitResult = DetectToVerticalTraces(10, 30.f, -350.f, FootLocation + FrontOffset, Player->GetActorForwardVector(), 15.f, true);
-
-		if (SurfaceHitResult.bBlockingHit)
-		{
-			/** 2.Landing Surface Space Check  **/
-			FVector Start = SurfaceHitResult.ImpactPoint + (Player->GetActorForwardVector() * 150.f) + FVector(0.f, 0.f, 110.f);
-			FVector End = Start + (Player->GetActorForwardVector() * 250.f);
-			FHitResult HitResult = BoxTrace(Start, End, Player->GetActorRotation(), FVector(100.f, 100.f, 100.f));
-			
-			AddNewEnvironmentTag(TagCategory_SurfaceSpace, HitResult.bBlockingHit);
-		}
-
-		/** 3.Add Landing Action Tag **/
-		FGameplayTag NewActionTag = FindActionTagByEnvironmentTags(TagCategory_Landing);
-		if (NewActionTag.IsValid())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[ActionTag] : %s"), *NewActionTag.ToString());
-			CurrenActionTags.AddTag(NewActionTag);
-		}
-		
-		/** 4.Execute Landing Amin Montage **/
-		/**************수정필요*****************/
-		//TryParkourAction();
+		DoLanding();
 	}
 	else
 	{
-		// 장애물 감지 
-		FHitResult HitResult = IsDetectObstacle();
+		// 태그 초기화
+		UE_LOG(LogTemp, Warning, TEXT("======RESET======"));
+		CurrenActionTags.Reset();
 
-		if (HitResult.bBlockingHit)
+		// 장애물 감지 
+		bool bObstacleHit = DetectObstacle();
+
+		if (bObstacleHit)
 		{
-			AddNewEnvironmentTag(TagCategory_ObstacleHeight, GetObstacleHeightValue(HitResult)); //장애물 높이 태그
-			AddNewEnvironmentTag(TagCategory_SurfaceGap, GetObstacleGapValue(HitResult)); //장애물 너비 태그
+			/** 1.Add Obstacle Height (Horizontal Sphere Traces) */
+			FVector ObstacleHeightStart = Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+			FHitResult HeightHitResult = DetectToHorTraces(Tag_ObstacleHeight, ObstacleHeightStart, Player->GetActorForwardVector(), false, false);
+
+			if (HeightHitResult.bBlockingHit)
+			{
+				AddNewEnvironmentTag(Tag_ObstacleHeight, HeightHitResult.ImpactPoint.Z);
+			}
+
+			/** 2.Add Obstacle Width (Vertical Sphere Traces) */
+			FVector ObstacleWidthStart = HeightHitResult.ImpactPoint;
+			FHitResult WidthHitResult = DetectToVerTraces(Tag_ObstacleWidth, ObstacleWidthStart, Player->GetActorForwardVector(), false, false);
+			float ObstacleWidth = FVector::Dist(ObstacleWidthStart, WidthHitResult.ImpactPoint);
+
+			if (WidthHitResult.bBlockingHit)
+			{
+				AddNewEnvironmentTag(Tag_ObstacleWidth, ObstacleWidth);
+			}
 		}
 		else
 		{
 			/** 1. Check Edge (Short Vertical Sphere Traces) **/
 			FVector PlayerFootLocation = Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-			FHitResult EdgeHitResult = DetectToVerticalTraces(SurfaceGap_Count, SurfaceGap_Gap, -SurfaceGap_Height, PlayerFootLocation, Player->GetActorForwardVector(), 15.f, false);
+			FHitResult EdgeHitResult = DetectToVerTraces(Tag_DetectNone, PlayerFootLocation, Player->GetActorForwardVector(), false, false);
 
-			/** 2. Check Vertical Gap (Long Vertical Line Trace) **/
+			/** 2. Check 'Step Box' or 'Rooftop'? (Long Vertical Line Trace) **/
 			if (EdgeHitResult.bBlockingHit)
 			{
-				
-				FVector EdgeStart = EdgeHitResult.Location + (Player->GetActorForwardVector() * 10.f);
-				FVector EdgeEnd = EdgeStart + FVector(0.f, 0.f, -100.f);
+				FVector EdgeStart = EdgeHitResult.ImpactPoint;
+				FHitResult EdgeHeightHitResult = LineTraceVer(Tag_DetectNone, EdgeStart, Player->GetActorForwardVector(), false);
 
-				FHitResult VerticalGapHitResult = LineTrace(EdgeStart, EdgeEnd);
-
-				// [Step Height]
-				if (VerticalGapHitResult.bBlockingHit) 
+				// [Step Box]
+				if (EdgeHeightHitResult.bBlockingHit)
 				{
-					/** 3.Check Horizontal Gap (Long Horizontal Line Trace) **/
-					FVector FrontOffset = Player->GetActorForwardVector() * 10.f;
-					FVector StepOverStart = EdgeHitResult.ImpactPoint + FrontOffset + FVector(0.f, 0.f, -10.f);
-					FVector StepOverEnd = StepOverStart + Player->GetActorForwardVector() * SurfaceGap_Distance;
+					/** 3.Add StepBox Width (Long Horizontal Line Trace) **/
+					FVector StepOverStart = EdgeHeightHitResult.ImpactPoint;
+					FHitResult StepWidthHitResult = LineTraceHor(Tag_StepBoxGap, StepOverStart, Player->GetActorForwardVector(), false);
 
-					FHitResult HorizontalGapHitResult = LineTrace(StepOverStart, StepOverEnd);
-
-					/** 4.Add Surface Gap Tag **/
-					if (HorizontalGapHitResult.bBlockingHit)
+					if (StepWidthHitResult.bBlockingHit)
 					{
-						AddNewEnvironmentTag(TagCategory_SurfaceGap, FVector::Dist(StepOverStart, HorizontalGapHitResult.ImpactPoint));
+						AddNewEnvironmentTag(Tag_StepBoxGap, FVector::Dist(StepOverStart, StepWidthHitResult.ImpactPoint));
 					}
 				}
 				else // [Rooftop]
 				{
 					/** 3.Get Horizontal Building Gap (Long Horizontal Sphere Traces) **/
-					FVector BuildingEdgeStart = EdgeHitResult.Location + FVector(0.f, 0.f, 600.f) + (Player->GetActorForwardVector() * 10.f); //건물 건너편이 더 높은 경우를 위해 z +600.f 부터 시작
-					FHitResult BuildingHorGapHitResult = DetectToHorizontalTraces(20, -100.f, 1200.f, BuildingEdgeStart, Player->GetActorForwardVector(), 20.f, true);
+					FVector BuildingEdgeStart = Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+					FHitResult BuildingHorHitResult = DetectToHorTraces(Tag_BuildingGap, PlayerFootLocation, Player->GetActorForwardVector(), true, false);
 
-					/** 4.Add Surface Building Gap Tag **/
-					if (BuildingHorGapHitResult.bBlockingHit)
+					if (BuildingHorHitResult.bBlockingHit)
 					{
-						/** 5.Get Vertical Building Height (Long Vertical Line Trace) **/
-						FVector FrontOffset = -BuildingHorGapHitResult.ImpactNormal * 10.f;
-						FVector BuildingHeightStart = BuildingHorGapHitResult.ImpactPoint + FVector(0.f, 0.f, 100.f) + FrontOffset;
-						FVector BuildingHeightEnd = BuildingHeightStart + FVector(0.f, 0.f, -150.f);
+						/** 4.Get Vertical Building Height (Long Vertical Line Trace) **/
+						FVector BuildingHeightStart = BuildingHorHitResult.ImpactPoint;
+						FHitResult BuildingVerHitResult = LineTraceVer(Tag_BuildingGap, BuildingHeightStart, -BuildingHorHitResult.ImpactNormal, false);
 
-						FHitResult BuildingVerGapHitResult = LineTrace(BuildingHeightStart, BuildingHeightEnd);
-
-						/** 6.Add Surface Gap Tag (The distance from Rooftop A to Rooftop B) **/
-						if (BuildingVerGapHitResult.bBlockingHit)
+						/** 5.Add Surface Gap (The distance from Rooftop A to Rooftop B) **/
+						if (BuildingVerHitResult.bBlockingHit)
 						{
-							float BuildingGap = FVector::Dist(Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()), BuildingVerGapHitResult.ImpactPoint);
-							AddNewEnvironmentTag(TagCategory_BuildingGap, BuildingGap);
+							float BuildingGap = FVector::Dist(Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()), BuildingVerHitResult.ImpactPoint);
+							AddNewEnvironmentTag(Tag_BuildingGap, BuildingGap);
 						}
 					}
 				}
@@ -177,7 +162,7 @@ void UParkourComponent::HandleToJump()
 		}	
 
 		// Execute Jump Action
-		FGameplayTag NewActionTag = FindActionTagByEnvironmentTags(TagCategory_Jump);
+		FGameplayTag NewActionTag = FindActionTagByEnvironmentTags(Tag_Jump);
 		if (NewActionTag.IsValid())
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[ActionTag] : %s"), *NewActionTag.ToString());
@@ -199,7 +184,7 @@ void UParkourComponent::HandleToJump()
 void UParkourComponent::DoParkourJump()
 {
 	// 1.현재 액션 컨테이너에서 점프 관련 태그 찾기
-	FGameplayTag JumpTag = FindCurrentActionTagForParentTag(TagCategory_Jump);
+	FGameplayTag JumpTag = FindCurrentActionTagForParentTag(Tag_Jump);
 
 	// 2.해당 태그가 가지는 점프 설정 정보 가져오기
 	FJumpOption Option = GetJumpOption(JumpTag);
@@ -211,6 +196,63 @@ void UParkourComponent::DoParkourJump()
 		Player->Jump();
 	}
 }
+
+void UParkourComponent::DoLanding()
+{
+	/** 1.Detect Surface to Foot Under **/
+	FVector FootLocation = Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+	FHitResult SurfaceHitResult = DetectToVerTraces(Tag_SurfaceSpace, FootLocation, Player->GetActorForwardVector(), true, true);
+
+	if (SurfaceHitResult.bBlockingHit)
+	{
+		/** 2.Landing Surface Space Check  **/
+		FHitResult HitResult = BoxTrace(Tag_SurfaceSpace, SurfaceHitResult.ImpactPoint, Player->GetActorForwardVector(), Player->GetActorRotation(), true);
+
+		AddNewEnvironmentTag(Tag_SurfaceSpace, HitResult.bBlockingHit);
+	}
+
+	/** 3.Add Landing Action Tag **/
+	FGameplayTag NewActionTag = FindActionTagByEnvironmentTags(Tag_Landing);
+	if (NewActionTag.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ActionTag] : %s"), *NewActionTag.ToString());
+
+		/** 1.Add ActionTag **/
+		CurrenActionTags.AddTag(NewActionTag);
+	}
+	
+	/** 4.Execute Landing Amin Montage **/
+	/**************수정필요*****************/
+	//TryParkourAction();
+}
+
+
+//=================================
+// 장애물 및 환경 감지 (Trace Logic)
+//=================================
+bool UParkourComponent::DetectObstacle()
+{
+	// Detect FrontObstacle (LineTrace_Horizontal)
+	FVector Start = Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+	FHitResult HitResult = LineTraceHor(Tag_Detect, Start, Player->GetActorForwardVector(), false);
+
+	// 2.Detect 환경 태그 추가
+	FGameplayTag NewDetectTag;
+	if (HitResult.bBlockingHit)
+	{
+		NewDetectTag = Tag_DetectObstacle;
+	}
+	else
+	{
+		NewDetectTag = Tag_DetectNone;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[EnvironmentTag] : %s"), *NewDetectTag.ToString());
+	CurrenEnvironmentTags.AddTag(NewDetectTag);
+
+	return HitResult.bBlockingHit;
+}
+
 
 //=================================
 //           Tag 결정        
@@ -255,6 +297,9 @@ void UParkourComponent::AddNewEnvironmentTag(FGameplayTag TagCategory, float Val
 
 FGameplayTag UParkourComponent::FindActionTagByEnvironmentTags(FGameplayTag ActionCategory) const
 {
+	FGameplayTagContainer HaveTags = CurrenActionTags;
+	HaveTags.AppendTags(CurrenEnvironmentTags);
+
 	if (!ActionCategoryList.IsEmpty())
 	{
 		TArray<FParkourActionList> ActionList;
@@ -266,10 +311,11 @@ FGameplayTag UParkourComponent::FindActionTagByEnvironmentTags(FGameplayTag Acti
 			// 2.액션 카테고리와 일치하는 DA 찾기
 			for (const auto& ActionEntry : CategoryDA->ActionList)
 			{
-				// 3. 조건과 일치하는 ActionTag 찾기
+				// 3. Action Condition과 CurrentTags가 일치하는 ActionTag 찾기
+
 				for (const auto& ConditionContainer : ActionEntry.ConditionTags)
 				{
-					if (CurrenEnvironmentTags.HasAll(ConditionContainer))
+					if (HaveTags.HasAll(ConditionContainer))
 					{
 						return ActionEntry.ActionTag;
 					}
@@ -280,6 +326,7 @@ FGameplayTag UParkourComponent::FindActionTagByEnvironmentTags(FGameplayTag Acti
 
 	return FGameplayTag::EmptyTag;
 }
+
 
 FJumpOption UParkourComponent::GetJumpOption(FGameplayTag NewTag) const
 {
@@ -298,99 +345,58 @@ FJumpOption UParkourComponent::GetJumpOption(FGameplayTag NewTag) const
 	return DefaultOption;
 }
 
+
 //=================================
-// 장애물 및 환경 감지 (Trace Logic)
+//      Basic Trace Logic
 //=================================
-FHitResult UParkourComponent::IsDetectObstacle()
+const UDA_SphereTracesOption* UParkourComponent::FindSpheresTraceOption(FGameplayTag TagCategory) const
 {
-	/*
-	* 점프 전 앞에 장애물이 있는지 체크 *
-	*/
-
-	// 1.Line Trace로 앞에 물체 감지
-	float LocationZ = DetectZOffset - Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-	FVector Start = Player->GetActorLocation() + FVector(0.f, 0.f, LocationZ);
-	FVector End = Start + (Player->GetActorForwardVector() * DetectDistance);
-
-	// 2.감지 여부에 따른 태그 부여
-	FGameplayTag NewDetectTag;
-	FHitResult HitResult = LineTrace(Start, End);
-	if (HitResult.bBlockingHit)
+	for (auto& Option : SphereTracesOptions)
 	{
-		NewDetectTag = Tag_DetectObstacle;
+		if (Option->CategoryTag.MatchesTag(TagCategory))
+		{
+			return Option;
+		}
 	}
-	else
-	{
-		NewDetectTag = Tag_DetectNone;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[EnvironmentTag] : %s"), *NewDetectTag.ToString());
-	CurrenEnvironmentTags.AddTag(NewDetectTag);
-	
-	return HitResult;
+	return nullptr;
 }
 
-float UParkourComponent::GetObstacleHeightValue(const FHitResult& DetectHitResult)
+const UDA_BoxTraceOption* UParkourComponent::FindBoxTraceOption(FGameplayTag TagCategory) const
 {
-	FVector FrontOffset = Player->GetActorForwardVector() * 5.f;
-	FVector Start = DetectHitResult.Location + FVector(0.f, 0.f, DetectHeight_ZOffset) + FrontOffset;
-	FVector End = DetectHitResult.Location + FrontOffset;
-
-	FHitResult HitResult = LineTrace(Start, End);
-	if (HitResult.bBlockingHit)
+	for (auto& Option : BoxTraceOptions)
 	{
-		return HitResult.Location.Z;
+		if (Option->CategoryTag.MatchesTag(TagCategory))
+		{
+			return Option;
+		}
 	}
-
-	return -1.f;
+	return nullptr;
 }
 
-float UParkourComponent::GetObstacleGapValue(const FHitResult& DetectHitResult)
+const UDA_TraceOptions* UParkourComponent::FindLineTraceOption(FGameplayTag TagCategory) const
 {
-	FVector TraceDirection = DetectHitResult.ImpactNormal * -1;
-	FVector Start = DetectHitResult.ImpactPoint + FVector(0.f, 0.f, DetectHeight_ZOffset);
-	FHitResult HitResult = DetectToVerticalTraces(DetectWidth_Count, DetectWidth_Gap, -DetectHeight_ZOffset, Start, TraceDirection, 15.f, false);
-
-	if (HitResult.bBlockingHit)
+	for (auto& Option : LineTraceOptions)
 	{
-		return FVector::Dist(DetectHitResult.ImpactPoint + FVector(0.f, 0.f, DetectHeight_ZOffset), HitResult.TraceStart);
+		if (Option->CategoryTag.MatchesTag(TagCategory))
+		{
+			return Option;
+		}
 	}
-
-	return -1.f;
+	return nullptr;
 }
 
-
-float UParkourComponent::GetSurfaceGapValue()
+FHitResult UParkourComponent::DetectToHorTraces(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bReturnHit, bool bDrawDebug) const
 {
-	// 1.아래 떨어지는 지점 찾기
-	FVector PlayerFootLocation = Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-	FHitResult LastHitResult = DetectToVerticalTraces(SurfaceGap_Count, SurfaceGap_Gap, -SurfaceGap_Height, PlayerFootLocation, Player->GetActorForwardVector(), 15.f, false);
+	const UDA_SphereTracesOption* Option = FindSpheresTraceOption(TagCategory);
 
-	// 2.앞 방향 빈 공간 Gap Distance 구하기
-	FVector FrontOffset = Player->GetActorForwardVector() * 10.f;
-	FVector Start = LastHitResult.ImpactPoint + FrontOffset + FVector(0.f, 0.f, -10.f);
-	FVector End = Start + Player->GetActorForwardVector() * SurfaceGap_Distance;
-
-	FHitResult HitResult = LineTrace(Start, End);
-
-	if (HitResult.bBlockingHit)
-	{
-		return FVector::Dist(Start, HitResult.ImpactPoint);
-	}
-
-	return -1.0f;
-}
-
-FHitResult UParkourComponent::DetectToHorizontalTraces(int32 TraceCount, float Gap, float Distance, FVector Start, FVector TraceDir, float Radius, bool bReturnHit) const
-{
 	FHitResult LastHitResult;
 
-	for (int i = 0; i < TraceCount; i++)
+	for (int i = 0; i < Option->Count; i++)
 	{
-		FVector StartLocation = Start + FVector(0.f, 0.f, Gap * i);
-		FVector EndLocation = StartLocation + TraceDir * Distance;
+		FVector StartLocation = Start + (Dir * Option->FrontOffset) + FVector(0.f, 0.f, Option->ZOffset + (Option->Gap * i));
+		FVector EndLocation = StartLocation + Dir * Option->Distance;
 
-		FHitResult HitResult = SphereTrace(StartLocation, EndLocation, Radius);
+		FHitResult HitResult = SphereTrace(StartLocation, EndLocation, Option->Radius, bDrawDebug);
 
 		if (bReturnHit) //첫번째로 감지된 벽 감지 즉시 반환
 		{
@@ -400,7 +406,7 @@ FHitResult UParkourComponent::DetectToHorizontalTraces(int32 TraceCount, float G
 		else { //공중 직전의 벽 높이 반환
 			if (HitResult.bBlockingHit)
 			{
-				if (i == TraceCount - 1) //낭떨어지를 감지하지 못한 경우
+				if (i == Option->Count - 1) //낭떨어지를 감지하지 못한 경우
 				{
 					return FHitResult();
 				}
@@ -416,16 +422,18 @@ FHitResult UParkourComponent::DetectToHorizontalTraces(int32 TraceCount, float G
 	return FHitResult();
 }
 
-FHitResult UParkourComponent::DetectToVerticalTraces(int32 TraceCount, float Gap, float Distance, FVector Start, FVector TraceDir, float Radius, bool bReturnHit) const
+FHitResult UParkourComponent::DetectToVerTraces(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bReturnHit, bool bDrawDebug) const
 {
+	const UDA_SphereTracesOption* Option = FindSpheresTraceOption(TagCategory);
+
 	FHitResult LastHitResult;
 
-	for (int i = 0; i < TraceCount; i++)
+	for (int i = 0; i < Option->Count; i++)
 	{
-		FVector StartLocation = Start + TraceDir * Gap * i;
-		FVector EndLocation = StartLocation + FVector(0.f, 0.f, Distance);
+		FVector StartLocation = Start + FVector(0.f, 0.f, Option->ZOffset) + (Dir * (Option->FrontOffset + (Option->Gap * i)));
+		FVector EndLocation = StartLocation + FVector(0.f, 0.f, Option->Distance);
 
-		FHitResult HitResult = SphereTrace(StartLocation, EndLocation, Radius);
+		FHitResult HitResult = SphereTrace(StartLocation, EndLocation, Option->Radius, bDrawDebug);
 
 		if (bReturnHit) //immediately return if find surface to floor.
 		{
@@ -434,11 +442,10 @@ FHitResult UParkourComponent::DetectToVerticalTraces(int32 TraceCount, float Gap
 		else { //낭떨어지 직전의 바닥 위치 반환 (낭떨어지 감지)
 			if (HitResult.bBlockingHit)
 			{
-				if (i == TraceCount - 1) //낭떨어지를 감지하지 못한 경우
+				if (i == Option->Count - 1) //낭떨어지를 감지하지 못한 경우
 				{
 					return FHitResult();
 				}
-
 				LastHitResult = HitResult;
 			}
 			else
@@ -450,7 +457,7 @@ FHitResult UParkourComponent::DetectToVerticalTraces(int32 TraceCount, float Gap
 	return FHitResult();
 }
 
-FHitResult UParkourComponent::SphereTrace(const FVector& Start, const FVector& End, float Radius) const
+FHitResult UParkourComponent::SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const
 {
 	FHitResult HitResult;
 	TArray<AActor*> ActorsToIgnore;
@@ -464,7 +471,7 @@ FHitResult UParkourComponent::SphereTrace(const FVector& Start, const FVector& E
 		UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1), // Trace Channel
 		false,         // Trace Complex
 		ActorsToIgnore,
-		EDrawDebugTrace::ForDuration, // Draw Debug Type
+		bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None, // Draw Debug Type
 		HitResult,
 		true,          // Ignore Self
 		FLinearColor::Red,   // 디버그 선 색상
@@ -474,40 +481,77 @@ FHitResult UParkourComponent::SphereTrace(const FVector& Start, const FVector& E
 	return HitResult;
 }
 
-FHitResult UParkourComponent::BoxTrace(const FVector& Start, const FVector& End, FRotator Rotation, FVector HalfSize) const
+
+FHitResult UParkourComponent::BoxTrace(FGameplayTag TagCategory, FVector Start, FVector Dir, FRotator Rotation, bool bDrawDebug) const
 {
+	const UDA_BoxTraceOption* Option = FindBoxTraceOption(TagCategory);
+
 	FHitResult HitResult;
 	TArray<AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(Player);
 
+	FVector StartLocation = Start + FVector(0.f, 0.f, Option->ZOffset) + (Dir * Option->FrontOffset);
+	FVector EndLocation = StartLocation + (Dir * Option->Distance);
+	FVector BoxHalfSize = FVector(Option->BoxHalfSize, Option->BoxHalfSize, Option->BoxHalfSize);
+
 	UKismetSystemLibrary::BoxTraceSingle(
-		GetWorld(), 
-		Start,
-		End,
-		HalfSize, //FVector(가로, 세로, 높이)
+		GetWorld(),
+		StartLocation,
+		EndLocation,
+		BoxHalfSize, //FVector(가로, 세로, 높이)
 		Rotation,
 		UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1),
 		false,
 		ActorsToIgnore,
-		EDrawDebugTrace::ForDuration,
+		bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
 		HitResult,
 		true,
 		FLinearColor::Red,
 		FLinearColor::Green,
 		5.0f
 	);
-	
+
 	return HitResult;
 }
 
-FHitResult UParkourComponent::LineTrace(const FVector& Start, const FVector& End) const
+FHitResult UParkourComponent::LineTraceVer(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bDrawDebug) const
 {
+	const UDA_TraceOptions* Option = FindLineTraceOption(TagCategory);
+
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(Player);
 
-	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_GameTraceChannel1, Params);
-	DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Green : FColor::Red, false, 3.f);
+	FVector StartLocation = Start + FVector(0.f, 0.f, Option->ZOffset) + (Dir * Option->FrontOffset);
+	FVector EndLocation = StartLocation + FVector(0.f, 0.f, Option->Distance);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_GameTraceChannel1, Params);
+
+	if (bDrawDebug)
+	{
+		DrawDebugLine(GetWorld(), StartLocation, EndLocation, bHit ? FColor::Green : FColor::Red, false, 3.f);
+	}
+
+	return HitResult;
+}
+
+FHitResult UParkourComponent::LineTraceHor(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bDrawDebug) const
+{
+	const UDA_TraceOptions* Option = FindLineTraceOption(TagCategory);
+
+	FHitResult HitResult;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(Player);
+
+	FVector StartLocation = Start + FVector(0.f, 0.f, Option->ZOffset) + (Dir * Option->FrontOffset);
+	FVector EndLocation = StartLocation + (Dir * Option->Distance);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_GameTraceChannel1, Params);
+
+	if (bDrawDebug)
+	{
+		DrawDebugLine(GetWorld(), StartLocation, EndLocation, bHit ? FColor::Green : FColor::Red, false, 3.f);
+	}
 
 	return HitResult;
 }

@@ -15,6 +15,12 @@ class UDA_EnvironmentTags;
 class UDA_ParkourActionCategory;
 class UDA_JumpAction; 
 struct FJumpOption;
+class UDA_TraceOptions;
+class UDA_SphereTracesOption;
+class UDA_BoxTraceOption;
+class UDA_LineTraceOption;
+
+
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SPEEDRUN_API UParkourComponent : public UActorComponent
@@ -46,7 +52,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Action")
 	void DoParkourJump();
 
-
+	UFUNCTION(BlueprintCallable, Category = "Action")
+	void DoLanding();
 	
 protected:
 	//===== 참조 및 상태 변수 =====//
@@ -80,68 +87,51 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Config")
 	TObjectPtr<UDA_JumpAction> JumpConfigs;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
+	TArray<TObjectPtr<UDA_SphereTracesOption>> SphereTracesOptions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
+	TArray<TObjectPtr<UDA_BoxTraceOption>> BoxTraceOptions;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
+	TArray<TObjectPtr<UDA_LineTraceOption>> LineTraceOptions;
+
 
 
 	//===== GameplayTag =====//
+	/**[Obstacle]**/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
-	FGameplayTag Tag_DetectObstacle;
+	FGameplayTag Tag_Detect;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
 	FGameplayTag Tag_DetectNone;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
-	FGameplayTag TagCategory_SurfaceGap;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
+	FGameplayTag Tag_DetectObstacle;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
-	FGameplayTag TagCategory_BuildingGap;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
+	FGameplayTag Tag_ObstacleHeight;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
-	FGameplayTag TagCategory_ObstacleHeight;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
+	FGameplayTag Tag_ObstacleWidth;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
-	FGameplayTag TagCategory_Jump;
+	/**[Surface]**/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Surface")
+	FGameplayTag Tag_StepBoxGap;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
-	FGameplayTag TagCategory_Landing;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Surface")
+	FGameplayTag Tag_BuildingGap;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Category")
-	FGameplayTag TagCategory_SurfaceSpace;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Surface")
+	FGameplayTag Tag_SurfaceSpace;
 
+	/**[Action]**/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Action")
+	FGameplayTag Tag_Jump;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Action")
+	FGameplayTag Tag_Landing;
 
-	//===== Trace Setting Value =====//
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|Detect")
-	float DetectZOffset;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|Detect")
-	float DetectDistance;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|Detect")
-	float DetectWidth_Gap;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|Detect")
-	float DetectWidth_Count;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|Detect")
-	float DetectWidth_Radius;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|Detect")
-	float DetectHeight_ZOffset;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|SurfaceGap")
-	float SurfaceGap_Height;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|SurfaceGap")
-	int32 SurfaceGap_Count;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|SurfaceGap")
-	float SurfaceGap_Gap;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|SurfaceGap")
-	float SurfaceGap_Radius;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config|SurfaceGap")
-	float SurfaceGap_Distance;
 
 
 	//===== Animation Setting Value =====//
@@ -153,23 +143,29 @@ protected:
 
 
 private:
-	//===== Tag 결정 =====//
+	//===== 장애물 및 환경 감지 =====//
+	bool DetectObstacle();
+
+
+
+	//===== Find DataAsset (feat.Tag) =====//
 	FGameplayTag FindCurrentActionTagForParentTag(FGameplayTag ParentTag) const;
 	void AddNewEnvironmentTag(FGameplayTag TagCategory, float Value);
 	FGameplayTag FindActionTagByEnvironmentTags(FGameplayTag ActionCategory) const;
 	FJumpOption GetJumpOption(FGameplayTag NewTag) const;
 
 
-	//===== 장애물 및 환경 감지 (Trace Logic) =====//
-	FHitResult IsDetectObstacle();
-	float GetObstacleHeightValue(const FHitResult& DetectHitResult);
-	float GetObstacleGapValue(const FHitResult& DetectHitResult);
-	float GetSurfaceGapValue();
 
-	FHitResult DetectToHorizontalTraces(int32 TraceCount, float Gap, float Distance, FVector Start, FVector TraceDir, float Radius, bool bReturnHit) const;
-	FHitResult DetectToVerticalTraces(int32 TraceCount, float Gap, float Distance, FVector Start, FVector TraceDir, float Radius, bool bReturnHit) const;
-	
-	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius) const;
-	FHitResult BoxTrace(const FVector& Start, const FVector& End, FRotator Rotation, FVector HalfSize) const;
-	FHitResult LineTrace(const FVector& Start, const FVector& End) const;
+	//===== Basic Trace Logic =====//
+	const UDA_SphereTracesOption* FindSpheresTraceOption(FGameplayTag TagCategory) const;
+	const UDA_BoxTraceOption* FindBoxTraceOption(FGameplayTag TagCategory) const;
+	const UDA_TraceOptions* FindLineTraceOption(FGameplayTag TagCategory) const;
+
+	FHitResult DetectToHorTraces(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bReturnHit, bool bDrawDebug) const;
+	FHitResult DetectToVerTraces(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bReturnHit, bool bDrawDebug) const;
+
+	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const;
+	FHitResult BoxTrace(FGameplayTag TagCategory, FVector Start, FVector Dir, FRotator Rotation, bool bDrawDebug) const;
+	FHitResult LineTraceVer(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bDrawDebug) const;
+	FHitResult LineTraceHor(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bDrawDebug) const;
 };
