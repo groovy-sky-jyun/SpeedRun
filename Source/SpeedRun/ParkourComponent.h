@@ -12,6 +12,7 @@ class ASpeedRunCharacter;
 class UParkourMovementComponent;
 class UMotionWarpingComponent;
 class UParkourDataAsset;
+struct FAnimInfo;
 class UDA_EnvironmentTags;
 class UDA_ParkourActionCategory;
 class UDA_JumpAction; 
@@ -50,7 +51,7 @@ public:
 
 	//===== 액션 수행 (Execution) =====//
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	void TryParkourAction();
+	void PlayAminMontage(FGameplayTag TagCategory);
 
 	UFUNCTION(BlueprintCallable, Category="Input")
 	void HandleToJump();
@@ -78,15 +79,18 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UMotionWarpingComponent> WarpComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Status")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	FGameplayTagContainer CurrentActionTags;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Status")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	FGameplayTagContainer CurrentEnvironmentTags;
 	
 
 
 	//===== DataAsset =====//
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="DataAsset")
+	TArray<TObjectPtr<UParkourDataAsset>> DA_ActionAnimInfo;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
 	TArray<TObjectPtr<UDA_EnvironmentTags>> DA_EnvironmentTags;
 
@@ -143,9 +147,9 @@ protected:
 
 
 
-	//===== Animation Setting Value =====//
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MotionWarping")
-	//float MotionWarpingZOffset;
+	//===== Character Physics State =====//
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
+	bool bCanLanding = false;
 
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MotionWarping")
 	//float MotionWarpingDistance;
@@ -153,6 +157,7 @@ protected:
 
 private:
 	//===== Find DataAsset (feat.Tag) =====//
+	FAnimInfo FindAnimInfo(const FGameplayTag& TagCategory) const;
 	FGameplayTag FindChildActionTag(const FGameplayTag& ParentTag) const;
 	void UpdateEnvironmentTags(const FGameplayTag& TagCategory, float Value);
 	void AddActionTag(const FGameplayTag& TagCategory);

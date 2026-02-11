@@ -8,28 +8,40 @@
 #include "Engine/EngineTypes.h"
 #include "ParkourDataAsset.generated.h"
 
-/**
- * 
- */
-UCLASS(BlueprintType)
-class SPEEDRUN_API UParkourDataAsset : public UPrimaryDataAsset
+USTRUCT(BlueprintType)
+struct FAnimInfo
 {
 	GENERATED_BODY()
 
-public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TagName")
-	FGameplayTag ActionTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Conditions")
-	FGameplayTagContainer RequirementTag;
+	FGameplayTag TagName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	class UAnimMontage* AnimMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	float SpeedRate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	FName WarpTargetName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Priority")
 	int32 Priority;
-	
 };
+
+UCLASS(BlueprintType)
+class SPEEDRUN_API UParkourDataAsset : public UPrimaryDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, Category = "Tag")
+	FGameplayTag CategoryTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
+	TArray<FAnimInfo> TagList;
+};
+
+
+
+

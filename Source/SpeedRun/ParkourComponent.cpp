@@ -5,9 +5,11 @@
 #include "SpeedRunCharacter.h"
 #include "ParkourMovementComponent.h"
 #include "Animation/AnimMontage.h"
+#include "Animation/AnimInstance.h"
 #include "MotionWarpingComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameplayTagContainer.h"
+#include "ParkourDataAsset.h"
 #include "DA_EnvironmentTags.h"
 #include "DA_ParkourActionCategory.h"
 #include "DA_JumpAction.h"
@@ -35,44 +37,39 @@ void UParkourComponent::BeginPlay()
 		WarpComponent = Player->GetMotionWarpingComponent();
 		ParkourMovement = Player->GetParkourMovement();
 	}
+
+	bCanLanding = false;
 }
 
 
 void UParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (!ParkourMovement->IsFalling() && bCanLanding)
+	{
+		PlayAminMontage(Tag_Landing);
+		bCanLanding = false;
+	}
 }
 
 //=================================
 //      액션 수행 (Execution)         
 //=================================
-void UParkourComponent::TryParkourAction()
+void UParkourComponent::PlayAminMontage(FGameplayTag TagCategory)
 {
-	/*
-	* 파쿠르 액션 AnimMontage + Motion Warping 실행 *
-	*/
-	/*
-	if (!ActionData)
+	if (DA_ActionAnimInfo.IsEmpty() || !AnimInstance)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Parkour DataAsset is null"));
+		UE_LOG(LogTemp, Warning, TEXT("Parkour DataAsset or WarpComp is null"));
 		return;
 	}
 	
-	if (WarpComponent)
+	FAnimInfo ActionData = FindAnimInfo(TagCategory);
+	if (UAnimMontage* AnimMontage = ActionData.AnimMontage)
 	{
-		FVector NewLocation = Player->GetActorLocation();
-		NewLocation = NewLocation + FVector(0.f, 0.f, MotionWarpingZOffset) + (Player->GetActorForwardVector() * MotionWarpingDistance);
-
-		FName WarpTargetName = ActionData->WarpTargetName;
-		WarpComponent->AddOrUpdateWarpTargetFromLocationAndRotation(WarpTargetName, NewLocation, Player->GetActorRotation());
-
-		UE_LOG(LogTemp, Warning, TEXT("WarpTargetName : %s"), *WarpTargetName.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("PlayAnimMontage"));
+		AnimInstance->Montage_Play(AnimMontage, ActionData.SpeedRate);
 	}
-
-	if (UAnimMontage* AnimMontage = ActionData->AnimMontage)
-	{
-		AnimInstance->Montage_Play(AnimMontage);
-	}*/
 }
 
 void UParkourComponent::HandleToJump()
@@ -128,9 +125,9 @@ void UParkourComponent::DoLanding()
 	/** 3.Add Landing Action Tag **/
 	AddActionTag(Tag_Landing);
 	
+	
 	/** 4.Execute Landing Amin Montage **/
-	/**************수정필요*****************/
-	//TryParkourAction();
+	bCanLanding = true;
 }
 
 
@@ -153,6 +150,29 @@ void UParkourComponent::SetupJumpPhysics()
 //=================================
 //   Find DataAsset (feat.Tag)
 //=================================
+FAnimInfo UParkourComponent::FindAnimInfo(const FGameplayTag& TagCategory) const
+{
+	if (DA_ActionAnimInfo.IsEmpty()) FAnimInfo();
+
+	FGameplayTag Tag = FindChildActionTag(TagCategory);
+
+	for (const auto& DAList : DA_ActionAnimInfo)
+	{
+		if (Tag.MatchesTag(DAList->CategoryTag))
+		{
+			for (const auto& DA : DAList->TagList)
+			{
+				if (DA.TagName.MatchesTag(Tag))
+				{
+					return DA;
+				}
+			}
+		}
+	}
+	return FAnimInfo();
+}
+
+
 FGameplayTag UParkourComponent::FindChildActionTag(const FGameplayTag& ParentTag) const
 {
 	FGameplayTagContainer Filtered = CurrentActionTags.Filter(FGameplayTagContainer(ParentTag));
@@ -185,13 +205,14 @@ void UParkourComponent::UpdateEnvironmentTags(const FGameplayTag& TagCategory, f
 void UParkourComponent::AddActionTag(const FGameplayTag& TagCategory)
 {
 	FGameplayTag NewActionTag = SelectActionTagOnContext(TagCategory);
-	if (NewActionTag.IsValid())
+	if (!NewActionTag.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[ActionTag] : %s"), *NewActionTag.ToString());
-
-		/** 1.Add ActionTag **/
-		CurrentActionTags.AddTag(NewActionTag);
+		return;
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[ActionTag] : %s"), *NewActionTag.ToString());
+	/** 1.Add ActionTag **/
+	CurrentActionTags.AddTag(NewActionTag);
 }
 
 FGameplayTag UParkourComponent::SelectActionTagOnContext(const FGameplayTag& ActionCategory) const
