@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
 #include "Templates/Function.h"
-//#include "Logging/LogMacros.h"
+#include "DA_JumpAction.h"
 #include "ParkourComponent.generated.h"
 
 class ASpeedRunCharacter;
@@ -16,8 +16,6 @@ class UParkourDataAsset;
 struct FAnimInfo;
 class UDA_EnvironmentTags;
 class UDA_ParkourActionCategory;
-class UDA_JumpAction; 
-struct FJumpOption;
 class UDA_TraceOptions;
 class UDA_SphereTracesOption;
 class UDA_BoxTraceOption;
@@ -29,6 +27,15 @@ enum class ETraceDirection : uint8
 	Horizontal,
 	Vertical
 };
+
+UENUM(BlueprintType)
+enum class ETraceType : uint8
+{
+	Sphere,
+	Box,
+	Line
+};
+
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SPEEDRUN_API UParkourComponent : public UActorComponent
@@ -43,27 +50,22 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+	void InitTraceMap();
+	void InitTagMap();
 
-	
 public:	
-	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-
 	//===== 액션 수행 (Execution) =====//
-	UFUNCTION(BlueprintCallable, Category = "Action")
-	void PlayAminMontage(FGameplayTag TagCategory);
-
 	UFUNCTION(BlueprintCallable, Category="Input")
 	void HandleToJump();
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
 	void DoLanding();
-	
 
-protected:
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	void SetupJumpPhysics();
+	void PlayAminMontage(FGameplayTag TagCategory);
+
 
 
 protected:
@@ -80,35 +82,50 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UMotionWarpingComponent> WarpComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|State")
 	FGameplayTagContainer CurrentActionTags;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|State")
 	FGameplayTagContainer CurrentEnvironmentTags;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
+	TMap<FGameplayTag, TObjectPtr<UParkourDataAsset>> AnimInfoMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
+	TMap<FGameplayTag, TObjectPtr<UDA_ParkourActionCategory>> ActionCategoryMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
+	TMap<FGameplayTag, FJumpOption> JumpConfigMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
+	TMap<FGameplayTag, TObjectPtr<UDA_EnvironmentTags>> EnvironmentMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
+	TMap<FGameplayTag, TObjectPtr<UDA_SphereTracesOption>> SphereTraceMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
+	TMap<FGameplayTag, TObjectPtr<UDA_BoxTraceOption>> BoxTraceMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
+	TMap<FGameplayTag, TObjectPtr<UDA_LineTraceOption>> LineTraceMap;
+
 
 
 	//===== DataAsset =====//
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="DataAsset")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="DataAsset|Action")
 	TArray<TObjectPtr<UParkourDataAsset>> DA_ActionAnimInfo;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Action")
+	TArray<TObjectPtr<UDA_ParkourActionCategory>> DA_ActionCategoryList;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Action")
+	TObjectPtr<UDA_JumpAction> DA_JumpConfig;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Environment")
 	TArray<TObjectPtr<UDA_EnvironmentTags>> DA_EnvironmentTags;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
-	TArray<TObjectPtr<UDA_ParkourActionCategory>> ActionCategoryList;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Config")
-	TObjectPtr<UDA_JumpAction> JumpConfigs;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
-	TArray<TObjectPtr<UDA_SphereTracesOption>> SphereTracesOptions;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
-	TArray<TObjectPtr<UDA_BoxTraceOption>> BoxTraceOptions;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset")
-	TArray<TObjectPtr<UDA_LineTraceOption>> LineTraceOptions;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Trace")
+	TArray<TObjectPtr<UDA_TraceOptions>> TracesOptions;
 
 
 
@@ -170,46 +187,28 @@ public:
 
 private:
 	//===== Find DataAsset (feat.Tag) =====//
+	FGameplayTag SelectEnvTagOnContext(const FGameplayTag& TagCategory, float Value);
+	FGameplayTag SelectActionTagOnContext(const FGameplayTag& ActionCategory);
 	FAnimInfo FindAnimInfo(const FGameplayTag& TagCategory) const;
-	FGameplayTag FindChildActionTag(const FGameplayTag& ParentTag) const;
-	void UpdateEnvironmentTags(const FGameplayTag& TagCategory, float Value);
-	bool AddActionTag(const FGameplayTag& TagCategory);
-	void UpdateAction(const FGameplayTag& TagCategory);
-	FGameplayTag SelectActionTagOnContext(const FGameplayTag& ActionCategory) const;
-	FJumpOption FindJumpOption(const FGameplayTag& NewTag) const;
+
 
 
 	//===== 장애물 및 환경 감지 =====//
+	void ScanEnvironment();
+	void ScanObstacleContext();
+	void ScanEdgeContext();
 	bool DetectObstacle();
-	void MeasureObstacleDimensions();
-	void AnalyzeEdgeEnvironment();
-	void MeasureStepBoxWidth(const FVector& StepOverStart);
-	void MeasureBuildingGap(const FVector& PlayerFootLocation);
+	void ScanStepBoxContext(const FVector& StepOverStart);
+	void ScanBuildingContext(const FVector& PlayerFootLocation);
 
 
 
 	//===== Basic Trace Logic =====//
-	template<typename T>
-	const T* GetTraceDA(const TArray<TObjectPtr<T>>& TraceOptionArray, FGameplayTag TagCategory) const
-	{
-		for (auto& Option : TraceOptionArray)
-		{
-			if (Option->CategoryTag.MatchesTag(TagCategory))
-			{
-				return Option.Get();
-			}
-		}
-		return nullptr;
-	}
-	const UDA_SphereTracesOption* GetTraceDA_Spheres(FGameplayTag TagCategory) const;
-	const UDA_BoxTraceOption* GetTraceDA_Box(FGameplayTag TagCategory) const;
-	const UDA_TraceOptions* GetTraceDA_Line(FGameplayTag TagCategory) const;
-
 	FHitResult DetectSphereTraces(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bReturnHit, ETraceDirection TraceDir, bool bDrawDebug) const;
 	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const;
 	FHitResult BoxTrace(FGameplayTag TagCategory, FVector Start, FVector Dir, FRotator Rotation, bool bDrawDebug) const;
-	FHitResult LineTraceVer(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bDrawDebug) const;
-	FHitResult LineTraceHor(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bDrawDebug) const;
-	FHitResult LineTrace(const FVector& Start, const FVector& End, bool bDrawDebug) const;
+	FHitResult LineTrace(FGameplayTag TagCategory, ETraceDirection TraceDir, FVector Start, FVector Dir, bool bDrawDebug) const;
 	
+
+
 };
