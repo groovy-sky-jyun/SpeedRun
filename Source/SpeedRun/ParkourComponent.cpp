@@ -100,8 +100,13 @@ void UParkourComponent::HandleToJump()
 			AnalyzeEdgeEnvironment();
 		}	
 
-		AddActionTag(Tag_Jump);
-
+		FGameplayTag JumpTag = SelectActionTagOnContext(Tag_Jump);
+		if (JumpTag.MatchesTag(Tag_Vault))
+		{
+			bCanVault = true;
+		}
+		UE_LOG(LogTemp, Warning, TEXT("[ActionTag] : %s"), *JumpTag.ToString());
+		CurrentActionTags.AddTag(JumpTag);
 		SetupJumpPhysics();
 
 		Player->Jump();
@@ -202,17 +207,26 @@ void UParkourComponent::UpdateEnvironmentTags(const FGameplayTag& TagCategory, f
 	}
 }
 
-void UParkourComponent::AddActionTag(const FGameplayTag& TagCategory)
+bool UParkourComponent::AddActionTag(const FGameplayTag& TagCategory)
 {
 	FGameplayTag NewActionTag = SelectActionTagOnContext(TagCategory);
 	if (!NewActionTag.IsValid())
 	{
-		return;
+		return false;
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[ActionTag] : %s"), *NewActionTag.ToString());
-	/** 1.Add ActionTag **/
+	
 	CurrentActionTags.AddTag(NewActionTag);
+	return true;
+}
+
+void UParkourComponent::UpdateAction(const FGameplayTag& TagCategory)
+{
+	if (AddActionTag(TagCategory))
+	{
+		PlayAminMontage(TagCategory);
+	}
 }
 
 FGameplayTag UParkourComponent::SelectActionTagOnContext(const FGameplayTag& ActionCategory) const
@@ -294,18 +308,31 @@ void UParkourComponent::MeasureObstacleDimensions()
 
 	if (HeightHitResult.bBlockingHit)
 	{
-		UpdateEnvironmentTags(Tag_ObstacleHeight, HeightHitResult.ImpactPoint.Z);
+		float Height = HeightHitResult.ImpactPoint.Z - ObstacleHeightStart.Z;
+		UpdateEnvironmentTags(Tag_ObstacleHeight, Height);
 	}
 
 	/** 2.Add Obstacle Width (Vertical Sphere Traces) */
 	FVector ObstacleWidthStart = HeightHitResult.ImpactPoint;
-	FHitResult WidthHitResult = DetectSphereTraces(Tag_ObstacleWidth, ObstacleWidthStart, Player->GetActorForwardVector(), false, ETraceDirection::Vertical, true);
+	FHitResult WidthHitResult = DetectSphereTraces(Tag_ObstacleWidth, ObstacleWidthStart, Player->GetActorForwardVector(), false, ETraceDirection::Vertical, false);
 	float ObstacleWidth = FVector::Dist(ObstacleWidthStart, WidthHitResult.ImpactPoint);
 
-	//UE_LOG(LogTemp, Warning, TEXT("Obstacle width is : %f"), ObstacleWidth);
+	
 	if (WidthHitResult.bBlockingHit)
 	{
 		UpdateEnvironmentTags(Tag_ObstacleWidth, ObstacleWidth);
+
+		/** 3.Add Obstacle Land = SurfaceHeight (Vertical Line Trace) **/
+		FVector EdgeStart = WidthHitResult.ImpactPoint;
+		FHitResult EdgeHeightHitResult = LineTraceVer(Tag_ObstacleLand, EdgeStart, Player->GetActorForwardVector(), true);
+		if (EdgeHeightHitResult.bBlockingHit)
+		{
+			UpdateEnvironmentTags(Tag_ObstacleLand, FVector::Dist(EdgeHeightHitResult.TraceStart, EdgeHeightHitResult.Location));
+		}
+		else //Obstacle.Land.Abyss
+		{
+			UpdateEnvironmentTags(Tag_ObstacleLand, 10000);
+		}
 	}
 }
 

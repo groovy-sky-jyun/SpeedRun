@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
 #include "Templates/Function.h"
+//#include "Logging/LogMacros.h"
 #include "ParkourComponent.generated.h"
 
 class ASpeedRunCharacter;
@@ -128,6 +129,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
 	FGameplayTag Tag_ObstacleWidth;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
+	FGameplayTag Tag_ObstacleLand;
+
 	/**[Surface]**/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Surface")
 	FGameplayTag Tag_StepBoxGap;
@@ -143,16 +147,25 @@ protected:
 	FGameplayTag Tag_Jump;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Action")
+	FGameplayTag Tag_Vault;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Action")
 	FGameplayTag Tag_Landing;
 
 
-
+public:
 	//===== Character Physics State =====//
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
 	bool bCanLanding = false;
 
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MotionWarping")
-	//float MotionWarpingDistance;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
+	bool bCanVault = false;
+
+	UFUNCTION(BlueprintCallable, Category = "Components")
+	FORCEINLINE bool GetCanVault() const { return bCanVault; } 
+
+	UFUNCTION(BlueprintCallable, Category = "Components")
+	FORCEINLINE void SetCanVault(bool Value) { bCanVault = Value; }
 
 
 private:
@@ -160,7 +173,8 @@ private:
 	FAnimInfo FindAnimInfo(const FGameplayTag& TagCategory) const;
 	FGameplayTag FindChildActionTag(const FGameplayTag& ParentTag) const;
 	void UpdateEnvironmentTags(const FGameplayTag& TagCategory, float Value);
-	void AddActionTag(const FGameplayTag& TagCategory);
+	bool AddActionTag(const FGameplayTag& TagCategory);
+	void UpdateAction(const FGameplayTag& TagCategory);
 	FGameplayTag SelectActionTagOnContext(const FGameplayTag& ActionCategory) const;
 	FJumpOption FindJumpOption(const FGameplayTag& NewTag) const;
 

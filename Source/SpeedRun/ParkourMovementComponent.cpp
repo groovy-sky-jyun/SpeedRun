@@ -2,6 +2,7 @@
 
 
 #include "ParkourMovementComponent.h"
+#include "ParkourComponent.h"
 #include "SpeedRunCharacter.h"
 
 UParkourMovementComponent::UParkourMovementComponent()
@@ -58,6 +59,17 @@ bool UParkourMovementComponent::DoJump(bool bReplayingMoves, float DeltaTime)
 		return true;
 	}
 	return false;
+}
+
+void UParkourMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
+
+	if (PreviousMovementMode == MOVE_Falling && MovementMode == MOVE_Walking)
+	{
+		UParkourComponent* ParkourComponent = Player->GetParkourComponent();
+		ParkourComponent->SetCanVault(false);
+	}
 }
 
 

@@ -9,7 +9,7 @@
 class ACharacter;
 class ASpeedRunCharacter;
 class UCharacterMovementComponent;
-class UParkourManager;
+class UParkourComponent;
 
 UCLASS()
 class SPEEDRUN_API UPlayerAnimInstance : public UAnimInstance
@@ -43,14 +43,11 @@ public:
 	TObjectPtr<ASpeedRunCharacter> Player;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-	TObjectPtr<UParkourManager> ParkourManager;
+	TObjectPtr<UParkourComponent> ParkourComponent;
 
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
-	bool bCanMove;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Movement")
 	FVector Velocity;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
@@ -67,6 +64,13 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour")
 	bool bIsCrouching;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour")
+	bool bCanVault;
+
+	/*
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+	bool bCanMove;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	bool bIsOnLedge;
@@ -98,19 +102,18 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	bool bLedgeHasHandSurfaceR;
 
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	//float HandIKTargetAlpha;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
+	float HandIKTargetAlpha; */
 
 
 public:
+	/*
 	UFUNCTION()
 	void AnimNotify_ToHangBlendOut();
 
 	UFUNCTION()
 	void AnimNotify_ToHangEnd();
 
-
-
 	UFUNCTION()
-	void AnimNotify_ClimbUpEnd();
+	void AnimNotify_ClimbUpEnd();*/
 };

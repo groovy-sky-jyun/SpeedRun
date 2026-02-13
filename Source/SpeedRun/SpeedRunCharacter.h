@@ -41,19 +41,13 @@ private:
 	UCameraComponent* FollowCamera;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UParkourManager> ParkourComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UMotionWarpingComponent> MotionWarpingComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UParkourMovementComponent> ParkourMovementComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UParkourActionComponent> ParkourActionComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UParkourComponent> ParkourComponentTEST;
+	TObjectPtr<class UParkourComponent> ParkourComponent;
 
 
 
@@ -140,7 +134,7 @@ public:
 	FORCEINLINE class UMotionWarpingComponent* GetMotionWarpingComponent() const { return MotionWarpingComponent; }
 
 	UFUNCTION(BlueprintCallable, Category = "Components")
-	FORCEINLINE class UParkourManager* GetParkourManager() const { return ParkourComponent; }
+	FORCEINLINE class UParkourComponent* GetParkourComponent() const { return ParkourComponent; }
 
 	UFUNCTION(BlueprintCallable, Category = "Components")
 	FORCEINLINE class UParkourMovementComponent* GetParkourMovement() const { return ParkourMovementComponent; }

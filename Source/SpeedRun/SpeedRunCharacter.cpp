@@ -12,8 +12,6 @@
 #include "InputActionValue.h"
 #include "SpeedRun.h"
 #include "ParkourMovementComponent.h"
-#include "ParkourActionComponent.h"
-#include "ParkourManager.h"
 #include "MotionWarpingComponent.h" 
 #include "GameplayTagContainer.h"
 #include "ParkourComponent.h"
@@ -44,11 +42,9 @@ ASpeedRunCharacter::ASpeedRunCharacter(const FObjectInitializer& ObjectInitializ
 	FollowCamera->bUsePawnControlRotation = false;
 
 	// Create Parkour Movement Component
-	ParkourComponent = CreateDefaultSubobject<UParkourManager>(TEXT("ParkourComponent"));
-	ParkourActionComponent = CreateDefaultSubobject<UParkourActionComponent>(TEXT("ParkourActionComponent"));
-	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarp"));
+	ParkourComponent = CreateDefaultSubobject<UParkourComponent>(TEXT("ParkourComponent"));
 
-	ParkourComponentTEST = CreateDefaultSubobject<UParkourComponent>(TEXT("ParkourComponentTEST"));
+	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarp"));
 }
 
 void ASpeedRunCharacter::PostInitializeComponents()
@@ -70,11 +66,6 @@ void ASpeedRunCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(DownAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleDown);
 		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleDash);
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ASpeedRunCharacter::HandleInteract);
-
-		if (ParkourComponent)
-		{
-			ParkourComponent->SetupParkourInputComponent(EnhancedInputComponent);
-		}
 	}
 	else
 	{
@@ -98,28 +89,10 @@ void ASpeedRunCharacter::HandleMove(const FInputActionValue& Value)
 
 void ASpeedRunCharacter::HandleUp(const FInputActionValue& Value)
 {
-	/*if (ParkourComponent)
+	if (ParkourComponent)
 	{
-		if (ParkourComponent->CanParkourJump(Value))
-		{
-			return;
-		}
-	}*/
-	
-	// DoUp();
-	
-	if (ParkourComponentTEST)
-	{
-		ParkourComponentTEST->HandleToJump();
+		ParkourComponent->HandleToJump();
 	}
-
-
-
-	//ParkourComponentTEST->TryParkourAction();
-
-	
-
-
 }
 
 void ASpeedRunCharacter::HandleDown(const FInputActionValue& Value)
