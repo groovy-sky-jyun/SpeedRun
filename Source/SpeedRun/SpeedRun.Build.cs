@@ -28,19 +28,8 @@ public class SpeedRun : ModuleRules
 
 		PublicIncludePaths.AddRange(new string[] {
 			"SpeedRun",
-			"SpeedRun/Variant_Platforming",
-			"SpeedRun/Variant_Platforming/Animation",
-			"SpeedRun/Variant_Combat",
-			"SpeedRun/Variant_Combat/AI",
-			"SpeedRun/Variant_Combat/Animation",
-			"SpeedRun/Variant_Combat/Gameplay",
-			"SpeedRun/Variant_Combat/Interfaces",
-			"SpeedRun/Variant_Combat/UI",
-			"SpeedRun/Variant_SideScrolling",
-			"SpeedRun/Variant_SideScrolling/AI",
-			"SpeedRun/Variant_SideScrolling/Gameplay",
-			"SpeedRun/Variant_SideScrolling/Interfaces",
-			"SpeedRun/Variant_SideScrolling/UI"
+			"SpeedRun/DA",
+			"SpeedRun/Component"
 		});
 
 		// Uncomment if you are using Slate UI
