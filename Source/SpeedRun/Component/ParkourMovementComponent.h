@@ -41,7 +41,7 @@ protected:
 	float MaxClimbSpeed = 250.f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Jump")
-	float JumpForwardImpulse = 1.f;
+	float JumpForwardImpulse = 2.f;
 
 
 public:

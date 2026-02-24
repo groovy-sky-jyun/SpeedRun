@@ -6,7 +6,9 @@
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
 #include "Templates/Function.h"
+#include "Engine/DataTable.h"
 #include "DA_JumpAction.h"
+#include "Chooser.h"
 #include "ParkourComponent.generated.h"
 
 class ASpeedRunCharacter;
@@ -21,6 +23,7 @@ class UDA_SphereTracesOption;
 class UDA_BoxTraceOption;
 class UDA_LineTraceOption;
 
+
 UENUM(BlueprintType)
 enum class ETraceDirection : uint8
 {
@@ -34,6 +37,133 @@ enum class ETraceType : uint8
 	Sphere,
 	Box,
 	Line
+};
+
+USTRUCT(BlueprintType)
+struct FObstacleCheckResult : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasFrontLedge;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector FrontLedgeLocation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector FrontLedgeNormal;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasBackLedge;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector BackLedgeLocation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector BackLedgeNormal;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float BackLedgeHeight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasBackFloor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector BackFloorLocation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ObstacleHeight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ObstacleDepth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasUpperSurface;
+
+};
+
+USTRUCT(BlueprintType)
+struct FStepBoxCheckResult : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsOnEdge; //캐릭터 발밑 아래로 홈이 파여있는지 확인
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasNextFrontLedge;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector NextFrontLedgeLocation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector NextFrontLedgeNormal;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float GapDepth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasLandingSurface;
+};
+
+USTRUCT(BlueprintType)
+struct FTraversalCheckResult : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FObstacleCheckResult Obstacle_Data;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FStepBoxCheckResult StepBox_Data;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<UPrimitiveComponent> HitComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<UAnimMontage> ChosenMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float StartTime;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float PlayRate;
+};
+
+USTRUCT(BlueprintType)
+struct FTraversalChooserParams : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<EMovementMode> MovementMode;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Speed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasFrontLedge;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasUpperSurface;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasBackFloor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsOnEdge;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasLandingSurface;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ObstacleHeight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ObstacleDepth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float GapDepth;
 };
 
 
@@ -57,7 +187,17 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	//===== 액션 수행 (Execution) =====//
-	UFUNCTION(BlueprintCallable, Category="Input")
+
+	UFUNCTION(BlueprintCallable, Category = "Action")
+	bool TryTraversalJumpAction(float TraceForwardDistance);
+
+	UFUNCTION(BlueprintCallable, Category = "Action")
+	void PerformTraversalAction();
+
+	UFUNCTION(BlueprintCallable, Category = "Action")
+	void UpdateWarpTarget();
+
+	UFUNCTION(BlueprintCallable, Category="Action")
 	void HandleToJump();
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
@@ -81,6 +221,13 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<UMotionWarpingComponent> WarpComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Structure")
+	FTraversalCheckResult S_TraversalCheckResult;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ChooserTable")
+	TObjectPtr<UChooserTable> CHT_TraversalAnims;
+
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|State")
 	FGameplayTagContainer CurrentActionTags;

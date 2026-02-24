@@ -62,6 +62,24 @@ void UParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 //=================================
 //      액션 수행 (Execution)         
 //=================================
+
+bool UParkourComponent::TryTraversalJumpAction(float TraceForwardDistance)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Try Traversal Jump Action"));
+	return true;
+}
+
+void UParkourComponent::PerformTraversalAction()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Perform Traversal Action"));
+	
+}
+
+void UParkourComponent::UpdateWarpTarget()
+{
+
+}
+
 void UParkourComponent::HandleToJump()
 {
 	// 태그 초기화
@@ -133,6 +151,8 @@ void UParkourComponent::PlayAminMontage(FGameplayTag TagCategory)
 		AnimInstance->Montage_Play(AnimMontage, ActionData.SpeedRate);
 	}
 }
+
+
 
 //=================================
 //   Find DataAsset (feat.Tag)

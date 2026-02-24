@@ -21,6 +21,7 @@ public class SpeedRun : ModuleRules
 			"Slate",
 			"MotionWarping",
 			"GameplayTags",
+			"Chooser",
             "AnimGraphRuntime"
         });
 
