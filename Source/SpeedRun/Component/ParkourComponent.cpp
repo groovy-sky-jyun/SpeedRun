@@ -18,6 +18,7 @@
 #include "DA_LineTraceOption.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "ParkourBlock.h"
 
 
 #define CHECK_VALID(Ptr) if(!Ptr) { UE_LOG(LogTemp, Error, TEXT("%s is Null!"), TEXT(#Ptr)); return; }
@@ -35,12 +36,11 @@ void UParkourComponent::BeginPlay()
 
 	Player = Cast<ASpeedRunCharacter>(GetOwner());
 
-	if (Player)
-	{
-		AnimInstance = Player->GetMesh()->GetAnimInstance();
-		WarpComponent = Player->GetMotionWarpingComponent();
-		ParkourMovement = Player->GetParkourMovement();
-	}
+	if (!Player) return;
+
+	AnimInstance = Player->GetMesh()->GetAnimInstance();
+	WarpComponent = Player->GetMotionWarpingComponent();
+	ParkourMovement = Player->GetParkourMovement();
 
 	bCanLanding = false;
 	InitTraceMap();
@@ -65,8 +65,109 @@ void UParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 bool UParkourComponent::TryTraversalJumpAction(float TraceForwardDistance)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Try Traversal Jump Action"));
-	return true;
+	FVector ActorLocation = Player->GetActorLocation();
+	FVector ActorForward = Player->GetActorForwardVector();
+	float CapsuleRadius = Player->GetCapsuleComponent()->GetScaledCapsuleRadius();
+	float CapsuleHalfHeight = Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	FTraversalCheckResult TraversalResult;
+
+	// 정면 장애물 감지
+	AParkourBlock* Block;
+	FHitResult ObstacleHitResult = TryDetectObstacle();
+
+	if (!ObstacleHitResult.bBlockingHit)
+	{
+		// 일반 점프 | StepBoxJump
+	}
+
+	// 앞에 물체가 있는데 Traversal이 가능하지 않은 경우 -> 일반 점프
+	Block = Cast<AParkourBlock>(ObstacleHitResult.GetActor());
+	if (Block == nullptr)
+	{
+		S_TraversalCheckResult = TraversalResult;
+		return true;
+	}
+
+	// Traversal이 가능한 경우 -> Obstacle 정보 담기
+	TraversalResult = Block->GetLedgeTransform(ObstacleHitResult.ImpactPoint, ActorLocation);
+	TraversalResult.HitComponent = ObstacleHitResult.GetComponent();
+
+	FVector FrontLedgeLocation = TraversalResult.Obstacle_Data.FrontLedgeLocation;
+	FVector BackLedgeLocation = TraversalResult.Obstacle_Data.BackLedgeLocation;
+
+	if (TraversalResult.Obstacle_Data.bHasFrontLedge)
+	{
+		DrawSphereTrace(FrontLedgeLocation, 10.f, 5.0f);
+	}
+	else
+	{
+		// 물체가 감지 허용 범위 벗어난 경우 또는 traversal 조건에 부합하지 않은 경우
+		S_TraversalCheckResult = TraversalResult;
+		return true;
+	}
+
+	if (TraversalResult.Obstacle_Data.bHasBackLedge)
+	{
+		DrawSphereTrace(BackLedgeLocation, 10.f, 5.0f);
+	}
+
+	// 윗면에 올라설 수 있는 공간이 있는지 체크 -> 없다면 일반 Jump
+	FVector FrontLedgeNormal = TraversalResult.Obstacle_Data.FrontLedgeNormal;
+	FVector FrontLedgeTopSurfaceLocation = FrontLedgeLocation + FVector(0.f, 0.f, CapsuleHalfHeight + 2.f) + (FrontLedgeNormal * (CapsuleRadius + 2.0));
+	FHitResult FrontLedgeRoomHitResult = CapsuleTrace(ActorLocation, FrontLedgeTopSurfaceLocation, CapsuleRadius, CapsuleHalfHeight, true);
+	if (FrontLedgeRoomHitResult.bBlockingHit | FrontLedgeRoomHitResult.bStartPenetrating)
+	{
+		TraversalResult.Obstacle_Data.bHasFrontLedge = false;
+		S_TraversalCheckResult = TraversalResult;
+		return true;
+	}
+
+	// 물체 높이 체크
+	float ObstacleHeight = FMath::Abs((ActorLocation.Z - CapsuleHalfHeight) - FrontLedgeLocation.Z);
+	TraversalResult.Obstacle_Data.ObstacleHeight = ObstacleHeight;
+	UE_LOG(LogTemp, Warning, TEXT("Obstacle Height : %f"), ObstacleHeight);
+
+	// 물체 Depth 체크
+	FVector BackLedgeNormal = TraversalResult.Obstacle_Data.BackLedgeNormal;
+	FVector BackLedgeTopSurfaceLocation = BackLedgeLocation + FVector(0.f, 0.f, CapsuleHalfHeight + 2.f) + (BackLedgeNormal * (CapsuleRadius + 2.0));
+	FHitResult TopSweepResult = CapsuleTrace(FrontLedgeTopSurfaceLocation, BackLedgeTopSurfaceLocation, CapsuleRadius, CapsuleHalfHeight, true);
+	if (!TopSweepResult.bBlockingHit) //BackLedge까지를 Depth로 지정
+	{
+		FVector ObstacleDepthVector = FrontLedgeLocation - BackLedgeLocation;
+		float ObstacleDepth = ObstacleDepthVector.Size2D();
+		TraversalResult.Obstacle_Data.ObstacleDepth = ObstacleDepth;
+		UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth : %f"), ObstacleDepth);
+
+		// 착지 지점과의 높이차 데이터 구하기
+		FVector FloorFrontLocation = BackLedgeLocation + (BackLedgeNormal * (CapsuleRadius + 2.0));
+		float FloorZOffset = ObstacleHeight + 50.f;
+		FVector EndLocation = FloorFrontLocation - FVector(0.f, 0.f, FloorZOffset) + FVector(0.f, 0.f, CapsuleHalfHeight); //플레이어 중심이 바닥에 위치하면 안되므로 CapsuleHalfHeight를 더해준다.
+		FHitResult SurfaceHitResult = CapsuleTrace(BackLedgeTopSurfaceLocation, EndLocation, CapsuleRadius, CapsuleHalfHeight, true);
+
+		if (SurfaceHitResult.bBlockingHit && !SurfaceHitResult.bStartPenetrating)
+		{
+			TraversalResult.Obstacle_Data.bHasBackFloor = true;
+			TraversalResult.Obstacle_Data.BackFloorLocation = SurfaceHitResult.ImpactPoint;
+			TraversalResult.Obstacle_Data.BackLedgeHeight = FMath::Abs(SurfaceHitResult.ImpactPoint.Z - BackLedgeLocation.Z);
+			UE_LOG(LogTemp, Warning, TEXT("Obstacle Back Ledge Height : %f"), TraversalResult.Obstacle_Data.BackLedgeHeight);
+		}
+		else
+		{
+			TraversalResult.Obstacle_Data.bHasBackFloor = false;
+		}
+	}
+	else //충돌 지점 앞까지를 Depth로 지정
+	{
+		FVector ObstacleDepthVector = TopSweepResult.ImpactPoint - FrontLedgeLocation;
+		float ObstacleDepth = ObstacleDepthVector.Size2D();
+		TraversalResult.Obstacle_Data.ObstacleDepth = ObstacleDepth;
+		TraversalResult.Obstacle_Data.bHasBackLedge = false;
+		UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth : %f"), ObstacleDepth);
+	}
+
+	S_TraversalCheckResult = TraversalResult;
+
+	return false;
 }
 
 void UParkourComponent::PerformTraversalAction()
@@ -262,6 +363,20 @@ bool UParkourComponent::DetectObstacle()
 	return HitResult.bBlockingHit;
 }
 
+FHitResult UParkourComponent::TryDetectObstacle()
+{
+	FHitResult HitResult;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(Player);
+
+	FVector Start = Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 40.f);
+	FVector End = Start + Player->GetActorForwardVector() * 220.f;
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_GameTraceChannel1, Params);
+	DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Green : FColor::Red, false, 3.f);
+
+	return HitResult;
+}
+
 void UParkourComponent::ScanObstacleContext()
 {
 	/** 1.Add Obstacle Height (Horizontal Sphere Traces) */
@@ -297,6 +412,8 @@ void UParkourComponent::ScanObstacleContext()
 		}
 	}
 }
+
+
 
 void UParkourComponent::ScanEdgeContext()
 {
@@ -355,6 +472,15 @@ void UParkourComponent::ScanBuildingContext(const FVector& PlayerFootLocation)
 	}
 }
 
+void UParkourComponent::TryScanStepBoxContext()
+{
+	
+}
+
+void UParkourComponent::TryScanObstacleContext()
+{
+	
+}
 
 //=================================
 //      Basic Trace Logic
@@ -557,3 +683,44 @@ void UParkourComponent::InitTagMap()
 	}
 }
 
+FHitResult UParkourComponent::CapsuleTrace(FVector& Start, FVector& End, float Radius, float HalfHeight, bool bDrawDebug) const
+{
+	FHitResult HitResult;
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(Cast<AActor>(Player));
+
+	// SphereTraceSingle 대신 CapsuleTraceSingle을 사용합니다.
+	UKismetSystemLibrary::CapsuleTraceSingle(
+		GetWorld(),
+		Start,
+		End,
+		Radius,
+		HalfHeight, 
+		UEngineTypes::ConvertToTraceType(ECC_Visibility), //카메라 충돌 여부
+		false,         // Trace Complex
+		ActorsToIgnore,
+		bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None, 
+		HitResult,
+		true,          // Ignore Self
+		FLinearColor::Red,   // 디버그 선 색상
+		FLinearColor::Green, // 히트 시 색상
+		5.0f           // 디버그 선 유지 시간
+	);
+
+	return HitResult;
+}
+
+void UParkourComponent::DrawSphereTrace(FVector Center, float Radius, float LifeTime) const
+{
+	DrawDebugSphere(
+		GetWorld(),
+		Center,
+		Radius,             
+		12,                 // Segments (얼마나 동그랗게 보일지)
+		FColor::Cyan,       
+		false,              // bPersistentLines (영구적으로 남길지 여부)
+		LifeTime,              
+		0,                  // DepthPriority
+		1.0f                // Thickness 
+	);
+}

@@ -223,6 +223,12 @@ protected:
 	TObjectPtr<UMotionWarpingComponent> WarpComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Structure")
+	FStepBoxCheckResult S_StepBoxCheckResult;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Structure")
+	FObstacleCheckResult S_ObstacleCheckResult;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Structure")
 	FTraversalCheckResult S_TraversalCheckResult;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ChooserTable")
@@ -345,8 +351,11 @@ private:
 	void ScanObstacleContext();
 	void ScanEdgeContext();
 	bool DetectObstacle();
+	FHitResult TryDetectObstacle();
 	void ScanStepBoxContext(const FVector& StepOverStart);
 	void ScanBuildingContext(const FVector& PlayerFootLocation);
+	void TryScanStepBoxContext();
+	void TryScanObstacleContext();
 
 
 
@@ -355,7 +364,9 @@ private:
 	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const;
 	FHitResult BoxTrace(FGameplayTag TagCategory, FVector Start, FVector Dir, FRotator Rotation, bool bDrawDebug) const;
 	FHitResult LineTrace(FGameplayTag TagCategory, ETraceDirection TraceDir, FVector Start, FVector Dir, bool bDrawDebug) const;
-	
+	FHitResult CapsuleTrace(FVector& Start, FVector& End, float Radius, float HalfHeight, bool bDrawDebug) const;
+
+	void DrawSphereTrace(FVector Center, float Radius, float LifeTime) const;
 
 
 };
