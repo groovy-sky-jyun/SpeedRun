@@ -31,14 +31,6 @@ enum class ETraceDirection : uint8
 	Vertical
 };
 
-UENUM(BlueprintType)
-enum class ETraceType : uint8
-{
-	Sphere,
-	Box,
-	Line
-};
-
 USTRUCT(BlueprintType)
 struct FObstacleCheckResult : public FTableRowBase
 {
@@ -164,6 +156,9 @@ struct FTraversalChooserParams : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float GapDepth;
+
+public:
+	void InitializeFromContext(const FTraversalCheckResult& CheckResult, ACharacter* Player);
 };
 
 
@@ -180,8 +175,7 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
-	void InitTraceMap();
-	void InitTagMap();
+
 
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -189,22 +183,16 @@ public:
 	//===== 액션 수행 (Execution) =====//
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	bool TryTraversalJumpAction(float TraceForwardDistance);
+	bool TryTraversalJumpAction();
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	void PerformTraversalAction();
-
-	UFUNCTION(BlueprintCallable, Category = "Action")
-	void UpdateWarpTarget();
-
-	UFUNCTION(BlueprintCallable, Category="Action")
-	void HandleToJump();
+	UAnimMontage* TryParkourChooser(FTraversalCheckResult& CheckResult);
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
 	void DoLanding();
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	void PlayAminMontage(FGameplayTag TagCategory);
+	void PlayAminMontage(const FTraversalCheckResult& TraversalResult) const;
 
 
 
@@ -222,150 +210,22 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UMotionWarpingComponent> WarpComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Structure")
-	FStepBoxCheckResult S_StepBoxCheckResult;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Structure")
-	FObstacleCheckResult S_ObstacleCheckResult;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Structure")
-	FTraversalCheckResult S_TraversalCheckResult;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ChooserTable")
-	TObjectPtr<UChooserTable> CHT_TraversalAnims;
+	UChooserTable* CHT_TraversalAnims;
 
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|State")
-	FGameplayTagContainer CurrentActionTags;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|State")
-	FGameplayTagContainer CurrentEnvironmentTags;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
-	TMap<FGameplayTag, TObjectPtr<UDA_AnimOption>> AnimInfoMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
-	TMap<FGameplayTag, TObjectPtr<UDA_ParkourActionCategory>> ActionCategoryMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
-	TMap<FGameplayTag, FJumpOption> JumpConfigMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
-	TMap<FGameplayTag, TObjectPtr<UDA_EnvironmentTags>> EnvironmentMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
-	TMap<FGameplayTag, TObjectPtr<UDA_SphereTracesOption>> SphereTraceMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
-	TMap<FGameplayTag, TObjectPtr<UDA_BoxTraceOption>> BoxTraceMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tag|Map")
-	TMap<FGameplayTag, TObjectPtr<UDA_LineTraceOption>> LineTraceMap;
-
-
-
-	//===== DataAsset =====//
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="DataAsset|Action")
-	TArray<TObjectPtr<UDA_AnimOption>> DA_ActionAnimInfo;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Action")
-	TArray<TObjectPtr<UDA_ParkourActionCategory>> DA_ActionCategoryList;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Action")
-	TObjectPtr<UDA_JumpAction> DA_JumpConfig;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Environment")
-	TArray<TObjectPtr<UDA_EnvironmentTags>> DA_EnvironmentTags;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DataAsset|Trace")
-	TArray<TObjectPtr<UDA_TraceOptions>> TracesOptions;
-
-
-
-	//===== GameplayTag =====//
-	/**[Obstacle]**/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
-	FGameplayTag Tag_Detect;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
-	FGameplayTag Tag_DetectNone;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
-	FGameplayTag Tag_DetectObstacle;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
-	FGameplayTag Tag_ObstacleHeight;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
-	FGameplayTag Tag_ObstacleWidth;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Obstacle")
-	FGameplayTag Tag_ObstacleLand;
-
-	/**[Surface]**/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Surface")
-	FGameplayTag Tag_StepBoxGap;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Surface")
-	FGameplayTag Tag_BuildingGap;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Surface")
-	FGameplayTag Tag_SurfaceSpace;
-
-	/**[Action]**/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Action")
-	FGameplayTag Tag_Jump;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Action")
-	FGameplayTag Tag_Vault;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tag|Action")
-	FGameplayTag Tag_Landing;
-
-
-public:
-	//===== Character Physics State =====//
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
-	bool bCanLanding = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
-	bool bCanVault = false;
-
-	UFUNCTION(BlueprintCallable, Category = "Components")
-	FORCEINLINE bool GetCanVault() const { return bCanVault; } 
-
-	UFUNCTION(BlueprintCallable, Category = "Components")
-	FORCEINLINE void SetCanVault(bool Value) { bCanVault = Value; }
 
 
 private:
-	//===== Find DataAsset (feat.Tag) =====//
-	FGameplayTag SelectEnvTagOnContext(const FGameplayTag& TagCategory, float Value);
-	FGameplayTag SelectActionTagOnContext(const FGameplayTag& ActionCategory);
-	FAnimInfo FindAnimInfo(const FGameplayTag& TagCategory) const;
-
-
-
 	//===== 장애물 및 환경 감지 =====//
-	void ScanEnvironment();
-	void ScanObstacleContext();
-	void ScanEdgeContext();
-	bool DetectObstacle();
 	FHitResult TryDetectObstacle();
-	void ScanStepBoxContext(const FVector& StepOverStart);
-	void ScanBuildingContext(const FVector& PlayerFootLocation);
-	void TryScanStepBoxContext();
-	void TryScanObstacleContext();
-
+	FHitResult ScanSurfaceEdge(ETraceDirection TraceDir, int32 Count, FVector Start, FVector Dir, float Distance, float GapSize, float Radius, bool bReturnHit, bool bDrawDebug) const;
 
 
 	//===== Basic Trace Logic =====//
-	FHitResult DetectSphereTraces(FGameplayTag TagCategory, FVector Start, FVector Dir, bool bReturnHit, ETraceDirection TraceDir, bool bDrawDebug) const;
 	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const;
-	FHitResult BoxTrace(FGameplayTag TagCategory, FVector Start, FVector Dir, FRotator Rotation, bool bDrawDebug) const;
-	FHitResult LineTrace(FGameplayTag TagCategory, ETraceDirection TraceDir, FVector Start, FVector Dir, bool bDrawDebug) const;
+	FHitResult BoxTrace(FVector Start, FVector End, FVector BoxHalfSize, FRotator Rotation, bool bDrawDebug) const;
+	FHitResult LineTrace(FVector Start, FVector End, bool bDrawDebug) const;
 	FHitResult CapsuleTrace(FVector& Start, FVector& End, float Radius, float HalfHeight, bool bDrawDebug) const;
-
 	void DrawSphereTrace(FVector Center, float Radius, float LifeTime) const;
 
 

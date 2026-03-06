@@ -47,11 +47,8 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	float CalculatedDirection = UKismetAnimationLibrary::CalculateDirection(Velocity, Character->GetActorRotation());
 	float ClampCalculatedDirection = FMath::Clamp(CalculatedDirection, -45.0f, 45.0f);
 	Direction = Movement->bOrientRotationToMovement ? ClampCalculatedDirection : CalculatedDirection;
-	
-	bCanVault = ParkourComponent->GetCanVault();
-	//bIsCrouching = Movement->IsCrouching();
 
-	//bIsOnLedge = ParkourComponent->GetIsOnLedge();
+
 	//bCanMove = ParkourComponent->GetCanMove();
 
 	//bOverrideFootIK = ParkourComponent->GetOverrideFootIK();

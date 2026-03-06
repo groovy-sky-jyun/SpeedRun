@@ -30,7 +30,6 @@ protected:
 
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 	virtual bool DoJump(bool bReplayingMoves, float DeltaTime) override;
-	virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Owner")
 	TObjectPtr<ASpeedRunCharacter> Player;

@@ -91,12 +91,9 @@ void ASpeedRunCharacter::HandleUp(const FInputActionValue& Value)
 {
 	if (!ParkourMovementComponent) return;
 
-	if (ParkourMovementComponent->IsMovingOnGround())
+	if (ParkourComponent->TryTraversalJumpAction())
 	{
-		if (ParkourComponent->TryTraversalJumpAction(50.f))
-		{
-			Jump();
-		}
+		Jump();
 	}
 }
 

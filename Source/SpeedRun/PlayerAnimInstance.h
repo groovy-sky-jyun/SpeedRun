@@ -62,12 +62,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Direction;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour")
-	bool bIsCrouching;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour")
-	bool bCanVault;
-
 	/*
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	bool bCanMove;
