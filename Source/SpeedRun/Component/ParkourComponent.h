@@ -7,21 +7,13 @@
 #include "GameplayTagContainer.h"
 #include "Templates/Function.h"
 #include "Engine/DataTable.h"
-#include "DA_JumpAction.h"
 #include "Chooser.h"
 #include "ParkourComponent.generated.h"
 
 class ASpeedRunCharacter;
 class UParkourMovementComponent;
 class UMotionWarpingComponent;
-class UDA_AnimOption;
-struct FAnimInfo;
-class UDA_EnvironmentTags;
-class UDA_ParkourActionCategory;
-class UDA_TraceOptions;
-class UDA_SphereTracesOption;
-class UDA_BoxTraceOption;
-class UDA_LineTraceOption;
+class AParkourBlock;
 
 
 UENUM(BlueprintType)
@@ -178,7 +170,6 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	//===== 액션 수행 (Execution) =====//
-
 	UFUNCTION(BlueprintCallable, Category = "Action")
 	bool TryTraversalJumpAction();
 
@@ -216,7 +207,10 @@ protected:
 
 private:
 	//===== 장애물 및 환경 감지 =====//
-	FHitResult TryDetectObstacle();
+	FHitResult TryDetectObstacle(FVector ActorLocation, FVector ActorForward, float CapsuleHalfHeight);
+	void UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FTraversalCheckResult& TraversalResult, FVector ActorLocation, float CapsuleRadius, float CapsuleHalfHeight);
+	FHitResult TryDetectStepBox(FVector ActorLocation, float CapsuleHalfHeight);
+	void UpdateStepBoxData(FVector EdgeLocation, float Radius, FTraversalCheckResult& TraversalResult, FVector ActorForward);
 	FHitResult ScanSurfaceEdge(ETraceDirection TraceDir, int32 Count, FVector Start, FVector Dir, float Distance, float GapSize, float Radius, bool bReturnHit, bool bDrawDebug) const;
 	bool IsOnStepBox();
 
