@@ -59,6 +59,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	float MinLedgeWidth = 60.f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
+	float StepBoxMinLedgeWidth = 60.f;
+
 
 public:
 	UFUNCTION(BlueprintCallable)
@@ -66,4 +69,7 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	FTraversalCheckResult GetLedgeTransform(FVector HitLocation, FVector ActorLocation);
+
+	UFUNCTION(BlueprintCallable)
+	FTraversalCheckResult GetLedgeTransformToStepBox(FVector HitLocation);
 };

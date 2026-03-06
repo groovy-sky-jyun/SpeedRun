@@ -93,9 +93,6 @@ struct FStepBoxCheckResult : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float GapDepth;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bHasLandingSurface;
 };
 
 USTRUCT(BlueprintType)
@@ -213,13 +210,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ChooserTable")
 	UChooserTable* CHT_TraversalAnims;
 
-
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Value")
+	float MaxStepBoxGapDistance = 650.f;
 
 private:
 	//===== 장애물 및 환경 감지 =====//
 	FHitResult TryDetectObstacle();
 	FHitResult ScanSurfaceEdge(ETraceDirection TraceDir, int32 Count, FVector Start, FVector Dir, float Distance, float GapSize, float Radius, bool bReturnHit, bool bDrawDebug) const;
-
+	bool IsOnStepBox();
 
 	//===== Basic Trace Logic =====//
 	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const;

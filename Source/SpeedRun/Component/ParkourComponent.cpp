@@ -74,10 +74,44 @@ bool UParkourComponent::TryTraversalJumpAction()
 	if (!ObstacleHitResult.bBlockingHit)
 	{
 		// 일반 점프 | StepBoxJump
-		UE_LOG(LogTemp, Warning, TEXT("NON Detect Obstacle. Start Jump or Step Box Jump"));
-		UE_LOG(LogTemp, Warning, TEXT("Has Front Ledge : %f, Upper Surface : %f"), (float)TraversalResult.Obstacle_Data.bHasFrontLedge, (float)TraversalResult.Obstacle_Data.bHasUpperSurface);
-		TryParkourChooser(TraversalResult);
-		return true;
+		// 1.앞에 단차가 있는지 확인
+		int32 TraceCount = 6;
+		float Radius = 15.f;
+		float TraceDistance = 50.f;
+		FVector Start = ActorLocation - FVector(0.f, 0.f, CapsuleHalfHeight + TraceDistance/2);
+		
+		FHitResult StepBoxLastHitResult = ScanSurfaceEdge(ETraceDirection::Vertical, TraceCount, Start, Player->GetActorForwardVector(), TraceDistance, Radius*2, Radius, false, true);
+		if (StepBoxLastHitResult.bBlockingHit) //낭떨어지 직전 위치
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Detect Step Box"));
+
+			FVector EdgeLocation = StepBoxLastHitResult.ImpactPoint - FVector(0.f, 0.f, Radius) + (Player->GetActorForwardVector() * Radius);
+			FHitResult NextStepBoxHitResult = LineTrace(EdgeLocation, EdgeLocation + (Player->GetActorForwardVector() * MaxStepBoxGapDistance), true);
+
+			Block = Cast<AParkourBlock>(NextStepBoxHitResult.GetActor());
+			if (Block == nullptr)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("NextStepBox isn't ParkourBlock"));
+				TraversalResult.StepBox_Data.bIsOnEdge = true;
+				TryParkourChooser(TraversalResult);
+				return true;
+			}
+
+			TraversalResult = Block->GetLedgeTransformToStepBox(NextStepBoxHitResult.ImpactPoint);
+			TraversalResult.HitComponent = NextStepBoxHitResult.GetComponent();
+
+			TraversalResult.StepBox_Data.bIsOnEdge = true;
+			TraversalResult.StepBox_Data.GapDepth = FVector::Dist(StepBoxLastHitResult.ImpactPoint, TraversalResult.StepBox_Data.NextFrontLedgeLocation);
+
+			UE_LOG(LogTemp, Warning, TEXT("Step Box Gap : %f"), TraversalResult.StepBox_Data.GapDepth);
+			TryParkourChooser(TraversalResult);
+			return true;
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("NON Detect Anyone. Just Jump"));
+			return true;
+		}
 	}
 
 	// 앞에 물체가 있는데 Traversal이 가능하지 않은 경우 -> 일반 점프
@@ -422,6 +456,5 @@ void FTraversalChooserParams::InitializeFromContext(const FTraversalCheckResult&
 
 	// 3.Update Step Box Info
 	bIsOnEdge = CheckResult.StepBox_Data.bIsOnEdge;
-	bHasLandingSurface = CheckResult.StepBox_Data.bHasLandingSurface;
 	GapDepth = CheckResult.StepBox_Data.GapDepth;
 }
