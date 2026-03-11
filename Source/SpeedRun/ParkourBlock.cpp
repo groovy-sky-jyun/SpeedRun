@@ -127,21 +127,27 @@ FTraversalCheckResult AParkourBlock::GetLedgeTransform(FVector HitLocation, FVec
         return CheckResult;
     }
 
-    //Spline에서 HitLocation와 가장 가까운 위치(점) 찾기
+    // 1.Save FrontLedge Data 
+    // 1.1.Spline에서 HitLocation와 가장 가까운 위치(점) 찾기
     FVector LocalClosestPoint = ClosestLedge->FindLocationClosestToWorldLocation(HitLocation, ESplineCoordinateSpace::Local);
-    //특정 좌표가 Spline 시작점으로 부터 몇 cm 떨어져 있는지 계산
+    // 1.2.특정 좌표가 Spline 시작점으로 부터 몇 cm 떨어져 있는지 계산
     float Distance = ClosestLedge->GetDistanceAlongSplineAtLocation(LocalClosestPoint, ESplineCoordinateSpace::Local);
     
-    //Spline 안에 플레이어 손이 위치할 수 있도록 위치 보정
+    // 1.3.Spline 안에 플레이어 손이 위치할 수 있도록 위치 보정
     float MinWidth = MinLedgeWidth / 2.f;
     float MaxWidth = ClosestLedge->GetSplineLength() - MinWidth;
     float ClampedDistance = FMath::Clamp(Distance, MinWidth, MaxWidth);
 
+    // 1.4.FTraversalCheckResult에다가 데이터 저장
     FTransform SplineTransform = ClosestLedge->GetTransformAtDistanceAlongSpline(ClampedDistance, ESplineCoordinateSpace::World);
     CheckResult.Obstacle_Data.bHasFrontLedge = true;
     CheckResult.Obstacle_Data.FrontLedgeLocation = SplineTransform.GetLocation();
-    CheckResult.Obstacle_Data.FrontLedgeNormal = SplineTransform.GetRotation().GetUpVector();   
+    FVector FrontSplineForward = SplineTransform.GetRotation().GetForwardVector();
+    FVector FrontLedgeNormal = FrontSplineForward.RotateAngleAxis(-90.0f, FVector::UpVector); // Z축 기준으로 -90도 회전
+    CheckResult.Obstacle_Data.FrontLedgeNormal = FrontLedgeNormal;
+ 
 
+    // 2.Save BackLedge Data 
     TObjectPtr<USplineComponent>* BackSplinePtr = OppositeLedges.Find(ClosestLedge);
     if(BackSplinePtr == nullptr)
     {
@@ -153,7 +159,12 @@ FTraversalCheckResult AParkourBlock::GetLedgeTransform(FVector HitLocation, FVec
     FTransform BackSplineTransform = BackSpline->FindTransformClosestToWorldLocation(CheckResult.Obstacle_Data.FrontLedgeLocation, ESplineCoordinateSpace::World);
     CheckResult.Obstacle_Data.bHasBackLedge = true;
     CheckResult.Obstacle_Data.BackLedgeLocation = BackSplineTransform.GetLocation();
-    CheckResult.Obstacle_Data.BackLedgeNormal = BackSplineTransform.GetRotation().GetUpVector();
+    
+    FVector BackSplineForward = BackSplineTransform.GetRotation().GetForwardVector();
+    FVector BackLedgeNormal = BackSplineForward.RotateAngleAxis(-90.0f, FVector::UpVector); // Z축 기준으로 -90도 회전
+    CheckResult.Obstacle_Data.BackLedgeNormal = BackLedgeNormal;
+
+
 
     return CheckResult;
 }

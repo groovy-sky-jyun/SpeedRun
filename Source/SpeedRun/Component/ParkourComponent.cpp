@@ -62,22 +62,23 @@ bool UParkourComponent::TryTraversalJumpAction()
 	if (!ObstacleHitResult.bBlockingHit)
 	{
 		// 2.1.Detect Step Box
-		FHitResult StepBoxLastHitResult = TryDetectStepBox(ActorLocation, CapsuleHalfHeight);
+		FHitResult StepBoxLastHitResult = TryDetectStepBox(ActorLocation, ActorForward, CapsuleHalfHeight);
 
+		
 		if (StepBoxLastHitResult.bBlockingHit) //낭떨어지 직전 위치 반환
 		{
 			// 2.2.Detect Next Step Box
 			UpdateStepBoxData(StepBoxLastHitResult.ImpactPoint, 15.f, TraversalResult, ActorForward);
 
 			// 2.3.Evaluate Chooser Table 
-			TryParkourChooser(TraversalResult);
+			TraversalResult.ChosenMontage = TryParkourChooser(TraversalResult);
 
 			return true;
 		}
 		else
 		{
 			UE_LOG(LogTemp, Warning, TEXT("NON Detect Anyone. Just Jump"));
-			TryParkourChooser(TraversalResult);
+			TraversalResult.ChosenMontage = TryParkourChooser(TraversalResult);
 			return true;
 		}
 	}
@@ -87,13 +88,14 @@ bool UParkourComponent::TryTraversalJumpAction()
 	if (Block == nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Detect Obstacle. But It's not ParkourBlock"));
-		TryParkourChooser(TraversalResult);
+		TraversalResult.ChosenMontage = TryParkourChooser(TraversalResult);
 		return true;
 	}
 
 	// 4.감지된 Obstacle Data Update. 
 	UpdateObstacleData(ObstacleHitResult,Block, TraversalResult, ActorLocation, CapsuleRadius, CapsuleHalfHeight);
-	TryParkourChooser(TraversalResult);
+	TraversalResult.ChosenMontage = TryParkourChooser(TraversalResult);
+	PlayAminMontage(TraversalResult);
 	return true;
 }
 
@@ -161,13 +163,10 @@ void UParkourComponent::DoLanding()
 FHitResult UParkourComponent::TryDetectObstacle(FVector ActorLocation, FVector ActorForward, float CapsuleHalfHeight)
 {
 	FHitResult HitResult;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(Player);
 
 	FVector Start = ActorLocation + FVector(0.f, 0.f, -CapsuleHalfHeight + 40.f);
-	FVector End = Start + ActorForward * 220.f;
-	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_GameTraceChannel1, Params);
-	DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Green : FColor::Red, false, 3.f);
+	FVector End = Start + ActorForward * 300.f;
+	HitResult = LineTrace(Start, End, true);
 
 	return HitResult;
 }
@@ -193,12 +192,13 @@ void UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 
 	// 3.점프하는 궤도에 장애물 없는지 체크 (FrontLedge)
 	FVector FrontLedgeNormal = TraversalResult.Obstacle_Data.FrontLedgeNormal;
-	FVector FrontLedgeTopSurfaceLocation = FrontLedgeLocation + FVector(0.f, 0.f, CapsuleHalfHeight + 2.f) + (FrontLedgeNormal * (CapsuleRadius + 2.0));
 
-	float StartZOffset = FrontLedgeTopSurfaceLocation.Z - 70.f;
+	FVector FrontLedgeTopSurfaceLocation = FrontLedgeLocation + FVector(0.f, 0.f, CapsuleHalfHeight) + (-FrontLedgeNormal * (CapsuleRadius/2));
+
+	float StartZOffset = FrontLedgeTopSurfaceLocation.Z - CapsuleHalfHeight/2;
 	FVector Start = FVector(ActorLocation.X, ActorLocation.Y, StartZOffset);
 
-	FHitResult FrontLedgeRoomHitResult = CapsuleTrace(Start, FrontLedgeTopSurfaceLocation, CapsuleRadius / 2, CapsuleHalfHeight, true);
+	FHitResult FrontLedgeRoomHitResult = CapsuleTrace(Start, FrontLedgeTopSurfaceLocation, CapsuleRadius / 2, CapsuleHalfHeight/2, true);
 	if (FrontLedgeRoomHitResult.bBlockingHit | FrontLedgeRoomHitResult.bStartPenetrating) //장애물 있다면 일반 Jump
 	{
 		TraversalResult.Obstacle_Data.bHasFrontLedge = false;
@@ -246,7 +246,7 @@ void UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 		{
 			TraversalResult.Obstacle_Data.bHasBackFloor = true;
 			TraversalResult.Obstacle_Data.BackFloorLocation = SurfaceHitResult.ImpactPoint;
-			TraversalResult.Obstacle_Data.BackLedgeHeight = FMath::Abs(SurfaceHitResult.ImpactPoint.Z - BackLedgeLocation.Z);
+			TraversalResult.Obstacle_Data.BackLedgeHeight = (float)FMath::Abs(SurfaceHitResult.ImpactPoint.Z - BackLedgeLocation.Z);
 			UE_LOG(LogTemp, Warning, TEXT("Obstacle Back Ledge Height : %f"), TraversalResult.Obstacle_Data.BackLedgeHeight);
 		}
 		else // 착지 지점 없는 경우
@@ -266,14 +266,14 @@ void UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 }
 
 
-FHitResult UParkourComponent::TryDetectStepBox(FVector ActorLocation, float CapsuleHalfHeight)
+FHitResult UParkourComponent::TryDetectStepBox(FVector ActorLocation, FVector ActorForward, float CapsuleHalfHeight)
 {
-	int32 TraceCount = 6;
+	int32 TraceCount = 10;
 	float Radius = 15.f;
 	float TraceDistance = 50.f;
 	FVector Start = ActorLocation - FVector(0.f, 0.f, CapsuleHalfHeight + TraceDistance / 2);
 
-	FHitResult HitResult = ScanSurfaceEdge(ETraceDirection::Vertical, TraceCount, Start, ActorLocation, TraceDistance, Radius * 2, Radius, false, true);
+	FHitResult HitResult = ScanSurfaceEdge(ETraceDirection::Vertical, TraceCount, Start, ActorForward, TraceDistance, Radius * 2, Radius, false, true);
 
 	return HitResult;
 }

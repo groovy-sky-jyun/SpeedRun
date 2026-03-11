@@ -108,7 +108,7 @@ struct FTraversalCheckResult : public FTableRowBase
 	float StartTime;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float PlayRate;
+	float PlayRate = 1.0f;
 };
 
 USTRUCT(BlueprintType)
@@ -209,7 +209,7 @@ private:
 	//===== 장애물 및 환경 감지 =====//
 	FHitResult TryDetectObstacle(FVector ActorLocation, FVector ActorForward, float CapsuleHalfHeight);
 	void UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FTraversalCheckResult& TraversalResult, FVector ActorLocation, float CapsuleRadius, float CapsuleHalfHeight);
-	FHitResult TryDetectStepBox(FVector ActorLocation, float CapsuleHalfHeight);
+	FHitResult TryDetectStepBox(FVector ActorLocation, FVector ActorForward, float CapsuleHalfHeight);
 	void UpdateStepBoxData(FVector EdgeLocation, float Radius, FTraversalCheckResult& TraversalResult, FVector ActorForward);
 	FHitResult ScanSurfaceEdge(ETraceDirection TraceDir, int32 Count, FVector Start, FVector Dir, float Distance, float GapSize, float Radius, bool bReturnHit, bool bDrawDebug) const;
 	bool IsOnStepBox();
