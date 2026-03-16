@@ -9,6 +9,7 @@
 #include "MotionWarpingComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/KismetTextLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "ParkourBlock.h"
 #include "Chooser.h"
@@ -43,17 +44,45 @@ void UParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 }
 
 
-
 //=================================
 //      액션 수행 (Execution)         
 //=================================
-bool UParkourComponent::TryTraversalJumpAction()
+void UParkourComponent::PerformJumpSequence()
+{
+	CurrentEnvData = {};
+
+	bCanParkour = TryUpdateEnvData();
+	if (!bCanParkour)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Can't Parkour Jump"));
+		Player->Jump();
+		return;
+	}
+
+	CurrentParkourAction = EvaluateNextAction(CurrentEnvData);
+	switch (CurrentParkourAction){
+	case EParkourActionType::Hurdle:
+		ExecuteMontageByActionType(CurrentParkourAction, CurrentEnvData);
+		break;
+	case EParkourActionType::Vault:
+		ExecuteMontageByActionType(CurrentParkourAction, CurrentEnvData);
+		break;
+	case EParkourActionType::Hang:
+		break;
+	case EParkourActionType::WallRun:
+		break;
+	default:
+		return;
+	}
+
+}
+
+bool UParkourComponent::TryUpdateEnvData()
 {
 	FVector ActorLocation = Player->GetActorLocation();
 	FVector ActorForward = Player->GetActorForwardVector();
 	float CapsuleRadius = Player->GetCapsuleComponent()->GetScaledCapsuleRadius();
 	float CapsuleHalfHeight = Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-	FTraversalCheckResult TraversalResult = {};
 
 	// 1.정면 장애물 감지
 	FHitResult ObstacleHitResult = TryDetectObstacle(ActorLocation, ActorForward, CapsuleHalfHeight);
@@ -64,97 +93,99 @@ bool UParkourComponent::TryTraversalJumpAction()
 		// 2.1.Detect Step Box
 		FHitResult StepBoxLastHitResult = TryDetectStepBox(ActorLocation, ActorForward, CapsuleHalfHeight);
 
-		
-		if (StepBoxLastHitResult.bBlockingHit) //낭떨어지 직전 위치 반환
-		{
-			// 2.2.Detect Next Step Box
-			UpdateStepBoxData(StepBoxLastHitResult.ImpactPoint, 15.f, TraversalResult, ActorForward);
-
-			// 2.3.Evaluate Chooser Table 
-			TraversalResult.ChosenMontage = TryParkourChooser(TraversalResult);
-
-			return true;
-		}
-		else
+		if (!StepBoxLastHitResult.bBlockingHit) //낭떨어지 직전 위치 반환
 		{
 			UE_LOG(LogTemp, Warning, TEXT("NON Detect Anyone. Just Jump"));
-			TraversalResult.ChosenMontage = TryParkourChooser(TraversalResult);
-			return true;
+			return false;
+			
 		}
+
+		// 2.2.Detect Next Step Box
+		return UpdateStepBoxData(StepBoxLastHitResult.ImpactPoint, 15.f, CurrentEnvData, ActorForward);
 	}
 
 	// 3.장애물이 ParkourBlock이 아닌 경우 일반 Jump
 	AParkourBlock* Block = Cast<AParkourBlock>(ObstacleHitResult.GetActor());
+
 	if (Block == nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Detect Obstacle. But It's not ParkourBlock"));
-		TraversalResult.ChosenMontage = TryParkourChooser(TraversalResult);
-		return true;
+		return false;
 	}
 
 	// 4.감지된 Obstacle Data Update. 
-	UpdateObstacleData(ObstacleHitResult,Block, TraversalResult, ActorLocation, CapsuleRadius, CapsuleHalfHeight);
-	TraversalResult.ChosenMontage = TryParkourChooser(TraversalResult);
-	PlayAminMontage(TraversalResult);
-	return true;
+	return UpdateObstacleData(ObstacleHitResult, Block, CurrentEnvData, ActorLocation, CapsuleRadius, CapsuleHalfHeight);
 }
 
-UAnimMontage* UParkourComponent::TryParkourChooser(FTraversalCheckResult& CheckResult)
+EParkourActionType UParkourComponent::EvaluateNextAction(const FEnvironmentData& InCurrentEnvData)
 {
-	if (!CHT_TraversalAnims || !Player)
+	return EParkourActionType::None;
+}
+
+void UParkourComponent::ExecuteMontageByActionType(const EParkourActionType ActionType, const FEnvironmentData& InCurrentEnvData)
+{
+	// 1.ActionType에 맞는 ChooserTable 찾기
+	UChooserTable* CHT = ActionToCHT.FindRef(ActionType);
+
+	if(!CHT)
+	{
+		FString ActionName = UEnum::GetValueAsString(ActionType);
+		UE_LOG(LogTemp, Warning, TEXT("%s to CHT is null"), *ActionName);
+
+		Player->Jump();
+
+		return;
+	}
+
+	// 2.ChooserTable 실행 -> 알맞은 AnimMontage 얻기
+	UAnimMontage* CurrentMontage = SelectActionMontageFromCHT(CHT, InCurrentEnvData);
+
+	if (!CurrentMontage)
+	{
+		FString ActionName = UEnum::GetValueAsString(ActionType);
+		UE_LOG(LogTemp, Warning, TEXT("%s AnimMontage is null"), *ActionName);
+
+		Player->Jump();
+
+		return;
+	}
+
+	SetupMotionWarping();
+}
+
+UAnimMontage* UParkourComponent::SelectActionMontageFromCHT(UChooserTable* CHT, const FEnvironmentData& InCurrentEnvData)
+{
+	if (!CHT || !Player)
 	{
 		return nullptr;
 	}
 
-	FTraversalChooserParams ChooserParams = {};
-	ChooserParams.InitializeFromContext(CheckResult, Player);
+	// 1.Update Strut:TraversalChooserParams 
+	FTraversalChooserParams ChooserData = {};
+	ChooserData.UpdateTraversalChooserParams(InCurrentEnvData, Player);
 
-	FChooserEvaluationContext Context;
-	Context.AddStructParam(ChooserParams);
-	Context.AddObjectParam(Player);
+	// 2.Add FChooserEvaluationContext Params (CHT에 넘겨줄 내용물)
+	FChooserEvaluationContext ChooserContext;
+	ChooserContext.AddStructParam(ChooserData);
+	ChooserContext.AddObjectParam(Player);
 
-	FInstancedStruct ChooserStruct = UChooserFunctionLibrary::MakeEvaluateChooser(CHT_TraversalAnims);
+	// 3.Change ChooserTable To InstancedStruct (ChooserTable을 실행 가능한 Struct 구조로 변경)
+	FInstancedStruct ChooserStruct = UChooserFunctionLibrary::MakeEvaluateChooser(CHT);
+
+	// 4.Execute ChooserTable
 	UObject* Result = UChooserFunctionLibrary::EvaluateObjectChooserBase(
-		Context,
-		ChooserStruct,
-		UAnimMontage::StaticClass()
+		ChooserContext, //Chooser evaluation context
+		ChooserStruct, //EvaluateProxyAsset
+		UAnimMontage::StaticClass() //return Object
 	);
 
-	UAnimMontage* AnimMontage = Cast<UAnimMontage>(Result);
-	if (AnimMontage == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Action AnimMontage is null"));
-		return nullptr;
-	}
-
-	return AnimMontage;
+	return Cast<UAnimMontage>(Result);
 }
 
-void UParkourComponent::PlayAminMontage(const FTraversalCheckResult& TraversalResult) const
+void UParkourComponent::SetupMotionWarping() const
 {
-	if (!TraversalResult.ChosenMontage) return;
-
-	AnimInstance->Montage_Play(TraversalResult.ChosenMontage, TraversalResult.PlayRate);
+	UE_LOG(LogTemp, Warning, TEXT("Motion Warping Success"));
 }
-
-void UParkourComponent::DoLanding()
-{
-	/*
-	FVector FootLocation = Player->GetActorLocation() + FVector(0.f, 0.f, -Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-
-	FHitResult SurfaceHitResult = ScanSurfaceEdge(ETraceDirection::Vertical, FootLocation, Player->GetActorForwardVector(), true, true);
-
-	if (SurfaceHitResult.bBlockingHit)
-	{
-		FHitResult HitResult = BoxTrace(SurfaceHitResult.ImpactPoint, Player->GetActorForwardVector(), Player->GetActorRotation(), true);
-		
-		bCanLanding = true;
-	}*/
-	return;
-}
-
-
-
 
 
 //=================================
@@ -171,7 +202,7 @@ FHitResult UParkourComponent::TryDetectObstacle(FVector ActorLocation, FVector A
 	return HitResult;
 }
 
-void UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FTraversalCheckResult& TraversalResult, FVector ActorLocation, float CapsuleRadius, float CapsuleHalfHeight)
+bool UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FEnvironmentData& TraversalResult, FVector ActorLocation, float CapsuleRadius, float CapsuleHalfHeight)
 {
 	// 1.Hit 된 Obstacle Data 담기
 	TraversalResult = Block->GetLedgeTransform(ObstacleHitResult.ImpactPoint, Player->GetActorLocation()); 
@@ -183,7 +214,7 @@ void UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 	if (!TraversalResult.Obstacle_Data.bHasFrontLedge)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Detect Obstacle. But It hasn't FrontLedge."));
-		return;
+		return false;
 	}
 	else
 	{
@@ -203,7 +234,7 @@ void UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 	{
 		TraversalResult.Obstacle_Data.bHasFrontLedge = false;
 		UE_LOG(LogTemp, Warning, TEXT("Detect Obstacle. But It hasn't Surface."));
-		return;
+		return false;
 	}
 
 	// 4.Obstacle Height Data 저장 (FrontLedge)
@@ -216,7 +247,7 @@ void UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 	if (!TraversalResult.Obstacle_Data.bHasBackLedge)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Detect Obstacle. But It hasn't BackLedge."));
-		return;
+		return false;
 	}
 	else
 	{
@@ -262,7 +293,7 @@ void UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 		TraversalResult.Obstacle_Data.bHasBackLedge = false;
 		UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth : %f"), ObstacleDepth);
 	}
-	return;
+	return true;
 }
 
 
@@ -278,7 +309,7 @@ FHitResult UParkourComponent::TryDetectStepBox(FVector ActorLocation, FVector Ac
 	return HitResult;
 }
 
-void UParkourComponent::UpdateStepBoxData(FVector EdgeLocation, float Radius, FTraversalCheckResult& TraversalResult, FVector ActorForward)
+bool UParkourComponent::UpdateStepBoxData(FVector EdgeLocation, float Radius, FEnvironmentData& TraversalResult, FVector ActorForward)
 {
 	// 1.건너편 StepBox 존재 유무 확인
 	FVector Start = EdgeLocation - FVector(0.f, 0.f, Radius) + (ActorForward * Radius);
@@ -290,7 +321,7 @@ void UParkourComponent::UpdateStepBoxData(FVector EdgeLocation, float Radius, FT
 	{
 		UE_LOG(LogTemp, Warning, TEXT("NextStepBox isn't ParkourBlock"));
 		TraversalResult.StepBox_Data.bIsOnEdge = true;
-		return;
+		return false;
 	}
 
 	// 3.Update StepBoxData 
@@ -301,7 +332,7 @@ void UParkourComponent::UpdateStepBoxData(FVector EdgeLocation, float Radius, FT
 
 	UE_LOG(LogTemp, Warning, TEXT("Step Box Gap : %f"), TraversalResult.StepBox_Data.GapDepth);
 	
-	return;
+	return true;
 }
 
 FHitResult UParkourComponent::ScanSurfaceEdge(ETraceDirection TraceDir, int32 Count, FVector Start, FVector Dir, float Distance, float GapSize, float Radius, bool bReturnHit, bool bDrawDebug) const
@@ -460,7 +491,7 @@ void UParkourComponent::DrawSphereTrace(FVector Center, float Radius, float Life
 	);
 }
 
-void FTraversalChooserParams::InitializeFromContext(const FTraversalCheckResult& CheckResult, ACharacter* Player)
+void FTraversalChooserParams::UpdateTraversalChooserParams(const FEnvironmentData& CheckResult, ACharacter* Player)
 {
 	if (!Player) return;
 

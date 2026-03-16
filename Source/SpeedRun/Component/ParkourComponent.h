@@ -17,10 +17,32 @@ class AParkourBlock;
 
 
 UENUM(BlueprintType)
+enum class EParkourActionType : uint8
+{
+	None,
+	Hurdle,
+	Vault,
+	Hang,
+	WallRun
+};
+
+UENUM(BlueprintType)
 enum class ETraceDirection : uint8
 {
 	Horizontal,
 	Vertical
+};
+
+USTRUCT(BlueprintType)
+struct FParkourActionData : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EParkourActionType ActionType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<UAnimMontage> AnimMontage;
 };
 
 USTRUCT(BlueprintType)
@@ -88,7 +110,7 @@ struct FStepBoxCheckResult : public FTableRowBase
 };
 
 USTRUCT(BlueprintType)
-struct FTraversalCheckResult : public FTableRowBase
+struct FEnvironmentData : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -100,15 +122,6 @@ struct FTraversalCheckResult : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TObjectPtr<UPrimitiveComponent> HitComponent;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TObjectPtr<UAnimMontage> ChosenMontage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float StartTime;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float PlayRate = 1.0f;
 };
 
 USTRUCT(BlueprintType)
@@ -147,7 +160,7 @@ struct FTraversalChooserParams : public FTableRowBase
 	float GapDepth;
 
 public:
-	void InitializeFromContext(const FTraversalCheckResult& CheckResult, ACharacter* Player);
+	void UpdateTraversalChooserParams(const FEnvironmentData& CheckResult, ACharacter* Player);
 };
 
 
@@ -171,17 +184,30 @@ public:
 
 	//===== 액션 수행 (Execution) =====//
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	bool TryTraversalJumpAction();
+	void PerformJumpSequence();
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	UAnimMontage* TryParkourChooser(FTraversalCheckResult& CheckResult);
+	bool TryUpdateEnvData();
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	void DoLanding();
+	EParkourActionType EvaluateNextAction(const FEnvironmentData& InCurrentEnvData);
 
 	UFUNCTION(BlueprintCallable, Category = "Action")
-	void PlayAminMontage(const FTraversalCheckResult& TraversalResult) const;
+	void ExecuteMontageByActionType(const EParkourActionType ActionType, const FEnvironmentData& InCurrentEnvData);
 
+	UFUNCTION(BlueprintCallable, Category = "Action")
+	UAnimMontage* SelectActionMontageFromCHT(UChooserTable* CHT, const FEnvironmentData& InCurrentEnvData);
+
+	UFUNCTION(BlueprintCallable, Category = "Action")
+	void SetupMotionWarping() const;
+
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Anim")
+	TMap<EParkourActionType, UChooserTable*> ActionToCHT;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
+	float MaxStepBoxGapDistance = 650.f;
 
 
 protected:
@@ -198,21 +224,25 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UMotionWarpingComponent> WarpComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ChooserTable")
-	UChooserTable* CHT_TraversalAnims;
 
-protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Value")
-	float MaxStepBoxGapDistance = 650.f;
+private:
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	EParkourActionType CurrentParkourAction = EParkourActionType::None;
+
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	FEnvironmentData CurrentEnvData = {};
+
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	bool bCanParkour = false;
 
 private:
 	//===== 장애물 및 환경 감지 =====//
 	FHitResult TryDetectObstacle(FVector ActorLocation, FVector ActorForward, float CapsuleHalfHeight);
-	void UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FTraversalCheckResult& TraversalResult, FVector ActorLocation, float CapsuleRadius, float CapsuleHalfHeight);
+	bool UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FEnvironmentData& TraversalResult, FVector ActorLocation, float CapsuleRadius, float CapsuleHalfHeight);
 	FHitResult TryDetectStepBox(FVector ActorLocation, FVector ActorForward, float CapsuleHalfHeight);
-	void UpdateStepBoxData(FVector EdgeLocation, float Radius, FTraversalCheckResult& TraversalResult, FVector ActorForward);
+	bool UpdateStepBoxData(FVector EdgeLocation, float Radius, FEnvironmentData& TraversalResult, FVector ActorForward);
 	FHitResult ScanSurfaceEdge(ETraceDirection TraceDir, int32 Count, FVector Start, FVector Dir, float Distance, float GapSize, float Radius, bool bReturnHit, bool bDrawDebug) const;
-	bool IsOnStepBox();
+
 
 	//===== Basic Trace Logic =====//
 	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const;

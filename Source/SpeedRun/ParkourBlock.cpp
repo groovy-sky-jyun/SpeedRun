@@ -116,9 +116,9 @@ USplineComponent* AParkourBlock::FindLedgeClosestToActor(FVector ActorLocation)
 
 
 
-FTraversalCheckResult AParkourBlock::GetLedgeTransform(FVector HitLocation, FVector ActorLocation)
+FEnvironmentData AParkourBlock::GetLedgeTransform(FVector HitLocation, FVector ActorLocation)
 {
-    FTraversalCheckResult CheckResult;
+    FEnvironmentData CheckResult;
 
     USplineComponent* ClosestLedge = FindLedgeClosestToActor(ActorLocation);
     if (!ClosestLedge || ClosestLedge->GetSplineLength() < MinLedgeWidth)
@@ -138,7 +138,7 @@ FTraversalCheckResult AParkourBlock::GetLedgeTransform(FVector HitLocation, FVec
     float MaxWidth = ClosestLedge->GetSplineLength() - MinWidth;
     float ClampedDistance = FMath::Clamp(Distance, MinWidth, MaxWidth);
 
-    // 1.4.FTraversalCheckResult에다가 데이터 저장
+    // 1.4.FEnvironmentData에다가 데이터 저장
     FTransform SplineTransform = ClosestLedge->GetTransformAtDistanceAlongSpline(ClampedDistance, ESplineCoordinateSpace::World);
     CheckResult.Obstacle_Data.bHasFrontLedge = true;
     CheckResult.Obstacle_Data.FrontLedgeLocation = SplineTransform.GetLocation();
@@ -170,9 +170,9 @@ FTraversalCheckResult AParkourBlock::GetLedgeTransform(FVector HitLocation, FVec
 }
 
 
-FTraversalCheckResult AParkourBlock::GetLedgeTransformToStepBox(FVector HitLocation)
+FEnvironmentData AParkourBlock::GetLedgeTransformToStepBox(FVector HitLocation)
 {
-    FTraversalCheckResult CheckResult;
+    FEnvironmentData CheckResult;
 
     USplineComponent* ClosestLedge = FindLedgeClosestToActor(HitLocation);
     if (!ClosestLedge || ClosestLedge->GetSplineLength() < StepBoxMinLedgeWidth)
