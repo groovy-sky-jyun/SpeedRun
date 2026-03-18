@@ -35,6 +35,9 @@ void UParkourComponent::BeginPlay()
 	AnimInstance = Player->GetMesh()->GetAnimInstance();
 	WarpComponent = Player->GetMotionWarpingComponent();
 	ParkourMovement = Player->GetParkourMovement();
+
+	CapsuleRadius = Player->GetCapsuleComponent()->GetScaledCapsuleRadius();
+	CapsuleHalfHeight = Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 }
 
 
@@ -49,9 +52,11 @@ void UParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 //=================================
 void UParkourComponent::PerformJumpSequence()
 {
-	CurrentEnvData = {};
+	// EnvData Reset
+	FEnvData EnvData = {};
 
-	bCanParkour = TryUpdateEnvData();
+	// 1.Update EnvData & Check Can Parkour
+	bCanParkour = TryUpdateEnvData(EnvData);
 	if (!bCanParkour)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Can't Parkour Jump"));
@@ -59,72 +64,117 @@ void UParkourComponent::PerformJumpSequence()
 		return;
 	}
 
-	CurrentParkourAction = EvaluateNextAction(CurrentEnvData);
-	switch (CurrentParkourAction){
-	case EParkourActionType::Hurdle:
-		ExecuteMontageByActionType(CurrentParkourAction, CurrentEnvData);
-		break;
-	case EParkourActionType::Vault:
-		ExecuteMontageByActionType(CurrentParkourAction, CurrentEnvData);
-		break;
-	case EParkourActionType::Hang:
-		break;
-	case EParkourActionType::WallRun:
-		break;
-	default:
+	// 2.Evaluate ActionType by EnvData
+	CurrentAction = EvaluateNextAction(EnvData);
+	FString ActionName = UEnum::GetValueAsString(CurrentAction);
+	UE_LOG(LogTemp, Warning, TEXT("Current Action : %s"), *ActionName);
+
+	if(CurrentAction == EParkourActionType::PARKOUR_None)
+	{
+		Player->Jump();
 		return;
 	}
 
+	// 3.Play Montage with CHT, MotionWarping
+	ExecuteMontageByActionType(CurrentAction, EnvData);
 }
 
-bool UParkourComponent::TryUpdateEnvData()
+bool UParkourComponent::TryUpdateEnvData(FEnvData& EnvData)
 {
 	FVector ActorLocation = Player->GetActorLocation();
 	FVector ActorForward = Player->GetActorForwardVector();
-	float CapsuleRadius = Player->GetCapsuleComponent()->GetScaledCapsuleRadius();
-	float CapsuleHalfHeight = Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	
+	FHitResult ObstacleHitResult = TryDetectObstacle(ActorLocation, ActorForward);
 
-	// 1.정면 장애물 감지
-	FHitResult ObstacleHitResult = TryDetectObstacle(ActorLocation, ActorForward, CapsuleHalfHeight);
-
-	// 2.장애물 미감지 -> Jump or StepBoxJump
+	// 1.not found Obstacle
 	if (!ObstacleHitResult.bBlockingHit)
 	{
-		// 2.1.Detect Step Box
-		FHitResult StepBoxLastHitResult = TryDetectStepBox(ActorLocation, ActorForward, CapsuleHalfHeight);
+		FHitResult StepBoxLastHitResult = TryDetectStepBox(ActorLocation, ActorForward);
 
-		if (!StepBoxLastHitResult.bBlockingHit) //낭떨어지 직전 위치 반환
+		// 1.1.not found Step Box -> Jump
+		if (!StepBoxLastHitResult.bBlockingHit)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("NON Detect Anyone. Just Jump"));
-			return false;
-			
+			return false; 
 		}
 
-		// 2.2.Detect Next Step Box
-		return UpdateStepBoxData(StepBoxLastHitResult.ImpactPoint, 15.f, CurrentEnvData, ActorForward);
+		// 1.2.found Step Box -> Update StepBoxData
+		return UpdateStepBoxData(StepBoxLastHitResult.ImpactPoint, 15.f, EnvData, ActorForward);
 	}
 
-	// 3.장애물이 ParkourBlock이 아닌 경우 일반 Jump
+	// 2.found Obstacle
 	AParkourBlock* Block = Cast<AParkourBlock>(ObstacleHitResult.GetActor());
 
-	if (Block == nullptr)
+	if (Block == nullptr) // 2.1.Check Obstacle is ParkourBlock.
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Detect Obstacle. But It's not ParkourBlock"));
+		UE_LOG(LogTemp, Warning, TEXT("Obstacle isn't ParkourBlock"));
 		return false;
 	}
 
-	// 4.감지된 Obstacle Data Update. 
-	return UpdateObstacleData(ObstacleHitResult, Block, CurrentEnvData, ActorLocation, CapsuleRadius, CapsuleHalfHeight);
+	// 2.2.Update ObstacleData
+	return UpdateObstacleData(ObstacleHitResult, Block, EnvData, ActorLocation);
 }
 
-EParkourActionType UParkourComponent::EvaluateNextAction(const FEnvironmentData& InCurrentEnvData)
+EParkourActionType UParkourComponent::EvaluateNextAction(const FEnvData& InEnvData)
 {
-	return EParkourActionType::None;
+	/* Choose New ParkourActionType based on the EnvData*/
+
+	EMovementMode MovementMode = Player->GetCharacterMovement()->MovementMode;
+
+	switch (MovementMode) {
+	case EMovementMode::MOVE_Walking:
+		// Hasn't FrontLedge -> Hurdle/Jump
+		if (!InEnvData.Obstacle_Data.bHasFrontLedge)
+		{
+			if (InEnvData.StepBox_Data.bHasLandingSurface)
+			{
+				return EParkourActionType::PARKOUR_Hurdle;
+			}
+		}
+
+		if (InEnvData.Obstacle_Data.FrontHeight < 50.f)
+		{
+			return EParkourActionType::PARKOUR_None;
+		}
+
+		// Has FrontLedge && Has UpperSurface -> Vault/Mantle/Hang
+		if (InEnvData.Obstacle_Data.bHasLandingSurface)
+		{
+			if (InEnvData.Obstacle_Data.FrontHeight <= MaxObstacleHeight_Vault)
+			{
+				return EParkourActionType::PARKOUR_Vault;
+			}
+		}
+		
+		if(InEnvData.Obstacle_Data.bHasUpperSurface)
+		{
+			if (InEnvData.Obstacle_Data.FrontHeight <= MaxObstacleHeight_Mantle)
+			{
+				return EParkourActionType::PARKOUR_Mantle;
+			}
+		}
+
+		if (MaxObstacleHeight_Hang <= MaxObstacleHeight_Hang)
+		{
+			return EParkourActionType::PARKOUR_Hang;
+		}
+
+		break;
+	case EMovementMode::MOVE_Falling: // hang
+		if (InEnvData.Obstacle_Data.bHasFrontLedge) return EParkourActionType::PARKOUR_Hang;
+		break;
+	case EMovementMode::MOVE_Flying:
+		break;
+	case EMovementMode::MOVE_None:
+		break;
+	}
+
+
+	return EParkourActionType::PARKOUR_None;
 }
 
-void UParkourComponent::ExecuteMontageByActionType(const EParkourActionType ActionType, const FEnvironmentData& InCurrentEnvData)
+void UParkourComponent::ExecuteMontageByActionType(const EParkourActionType ActionType, const FEnvData& InEnvData)
 {
-	// 1.ActionType에 맞는 ChooserTable 찾기
+	// 1.Find Chooser Table by ParkourActionType
 	UChooserTable* CHT = ActionToCHT.FindRef(ActionType);
 
 	if(!CHT)
@@ -137,8 +187,8 @@ void UParkourComponent::ExecuteMontageByActionType(const EParkourActionType Acti
 		return;
 	}
 
-	// 2.ChooserTable 실행 -> 알맞은 AnimMontage 얻기
-	UAnimMontage* CurrentMontage = SelectActionMontageFromCHT(CHT, InCurrentEnvData);
+	// 2.Find AnimMontage from CHT
+	UAnimMontage* CurrentMontage = SelectActionMontageFromCHT(CHT, InEnvData);
 
 	if (!CurrentMontage)
 	{
@@ -150,10 +200,22 @@ void UParkourComponent::ExecuteMontageByActionType(const EParkourActionType Acti
 		return;
 	}
 
-	SetupMotionWarping();
+	// 3.Set and Play Animation
+	SetupMotionWarping(ActionType, InEnvData);
+
+	Player->PlayAnimMontage(CurrentMontage);
+
+	/* 후에 추가
+	// 지속성 액션 물리 제어 (중력 끄기)
+	if (ActionType == EParkourActionType::PARKOUR_Hang || ActionType == EParkourActionType::PARKOUR_WallRun)
+	{
+	  Player->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	  Player->GetCharacterMovement()->StopMovementImmediately();
+		}
+	*/
 }
 
-UAnimMontage* UParkourComponent::SelectActionMontageFromCHT(UChooserTable* CHT, const FEnvironmentData& InCurrentEnvData)
+UAnimMontage* UParkourComponent::SelectActionMontageFromCHT(UChooserTable* CHT, const FEnvData& InEnvData)
 {
 	if (!CHT || !Player)
 	{
@@ -162,7 +224,7 @@ UAnimMontage* UParkourComponent::SelectActionMontageFromCHT(UChooserTable* CHT, 
 
 	// 1.Update Strut:TraversalChooserParams 
 	FTraversalChooserParams ChooserData = {};
-	ChooserData.UpdateTraversalChooserParams(InCurrentEnvData, Player);
+	ChooserData.UpdateTraversalChooserParams(InEnvData, Player);
 
 	// 2.Add FChooserEvaluationContext Params (CHT에 넘겨줄 내용물)
 	FChooserEvaluationContext ChooserContext;
@@ -182,16 +244,68 @@ UAnimMontage* UParkourComponent::SelectActionMontageFromCHT(UChooserTable* CHT, 
 	return Cast<UAnimMontage>(Result);
 }
 
-void UParkourComponent::SetupMotionWarping() const
+void UParkourComponent::SetupMotionWarping(const EParkourActionType ActionType, const FEnvData& InEnvData)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Motion Warping Success"));
+	if (!WarpComponent) return;
+
+	WarpComponent->RemoveAllWarpTargets();
+	const FObstacleData& ObstacleData = InEnvData.Obstacle_Data;
+	const FStepBoxData& StepBoxData = InEnvData.StepBox_Data;
+
+	switch (ActionType){
+	case EParkourActionType::PARKOUR_Vault:
+		if (ObstacleData.bHasFrontLedge)
+		{
+			AddWarpTarget(FName("FrontEdge"), ObstacleData.FrontLedgeLocation, ObstacleData.FrontLedgeNormal);
+		}
+		if (ObstacleData.bHasLandingSurface)
+		{
+			AddWarpTarget(FName("DropLanding"), ObstacleData.LandingSurfaceLocation, ObstacleData.FrontLedgeNormal);
+		}
+		break;
+	case EParkourActionType::PARKOUR_Hurdle:
+		if (StepBoxData.bHasNextFrontLedge)
+		{
+			AddWarpTarget(FName("Landing"), StepBoxData.LandingSurfaceLocation, StepBoxData.NextFrontLedgeNormal);
+		}
+		break;
+	case EParkourActionType::PARKOUR_Mantle:
+		if (ObstacleData.bHasFrontLedge)
+		{
+			AddWarpTarget(FName("FrontEdge"), ObstacleData.FrontLedgeLocation, ObstacleData.FrontLedgeNormal);
+		}
+		if (ObstacleData.bHasLandingSurface)
+		{
+			AddWarpTarget(FName("UpperLanding"), ObstacleData.UpperSurfaceLocation, ObstacleData.FrontLedgeNormal);
+		}
+		break;
+	case EParkourActionType::PARKOUR_Hang:
+		if (ObstacleData.bHasFrontLedge)
+		{
+			// 손을 짚을 앞쪽 모서리(FrontEdge) 위치와 노멀 전달
+			AddWarpTarget(FName("FrontEdge"), ObstacleData.FrontLedgeLocation, ObstacleData.FrontLedgeNormal);
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+void UParkourComponent::AddWarpTarget(FName TargetName, FVector Location, FVector Normal)
+{
+	FRotator TargetRotation = (-Normal).Rotation();
+	// Yaw 만 적용
+	TargetRotation.Pitch = 0.f;
+	TargetRotation.Roll = 0.f;
+
+	WarpComponent->AddOrUpdateWarpTargetFromLocationAndRotation(TargetName, Location, TargetRotation);
 }
 
 
 //=================================
 //           환경 감지 
 //=================================
-FHitResult UParkourComponent::TryDetectObstacle(FVector ActorLocation, FVector ActorForward, float CapsuleHalfHeight)
+FHitResult UParkourComponent::TryDetectObstacle(FVector ActorLocation, FVector ActorForward)
 {
 	FHitResult HitResult;
 
@@ -202,135 +316,198 @@ FHitResult UParkourComponent::TryDetectObstacle(FVector ActorLocation, FVector A
 	return HitResult;
 }
 
-bool UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FEnvironmentData& TraversalResult, FVector ActorLocation, float CapsuleRadius, float CapsuleHalfHeight)
-{
-	// 1.Hit 된 Obstacle Data 담기
-	TraversalResult = Block->GetLedgeTransform(ObstacleHitResult.ImpactPoint, Player->GetActorLocation()); 
-	TraversalResult.HitComponent = ObstacleHitResult.GetComponent();
-
-	// 2.감지된 Obstacle의 FrontLedgeData가 Traversal 조건에 부합하지 않은 경우 종료
-	FVector FrontLedgeLocation = TraversalResult.Obstacle_Data.FrontLedgeLocation;
-	FVector BackLedgeLocation = TraversalResult.Obstacle_Data.BackLedgeLocation;
-	if (!TraversalResult.Obstacle_Data.bHasFrontLedge)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Detect Obstacle. But It hasn't FrontLedge."));
-		return false;
-	}
-	else
-	{
-		DrawSphereTrace(FrontLedgeLocation, 10.f, 5.0f);
-	}
-
-	// 3.점프하는 궤도에 장애물 없는지 체크 (FrontLedge)
-	FVector FrontLedgeNormal = TraversalResult.Obstacle_Data.FrontLedgeNormal;
-
-	FVector FrontLedgeTopSurfaceLocation = FrontLedgeLocation + FVector(0.f, 0.f, CapsuleHalfHeight) + (-FrontLedgeNormal * (CapsuleRadius/2));
-
-	float StartZOffset = FrontLedgeTopSurfaceLocation.Z - CapsuleHalfHeight/2;
-	FVector Start = FVector(ActorLocation.X, ActorLocation.Y, StartZOffset);
-
-	FHitResult FrontLedgeRoomHitResult = CapsuleTrace(Start, FrontLedgeTopSurfaceLocation, CapsuleRadius / 2, CapsuleHalfHeight/2, true);
-	if (FrontLedgeRoomHitResult.bBlockingHit | FrontLedgeRoomHitResult.bStartPenetrating) //장애물 있다면 일반 Jump
-	{
-		TraversalResult.Obstacle_Data.bHasFrontLedge = false;
-		UE_LOG(LogTemp, Warning, TEXT("Detect Obstacle. But It hasn't Surface."));
-		return false;
-	}
-
-	// 4.Obstacle Height Data 저장 (FrontLedge)
-	float ObstacleHeight = FMath::Abs((ActorLocation.Z - CapsuleHalfHeight) - FrontLedgeLocation.Z);
-	TraversalResult.Obstacle_Data.ObstacleHeight = ObstacleHeight;
-	UE_LOG(LogTemp, Warning, TEXT("Obstacle Height : %f"), ObstacleHeight);
-
-
-	// 5.감지된 Obstacle의 BackLedgeData가 Traversal 조건에 부합하지 않은 경우 종료
-	if (!TraversalResult.Obstacle_Data.bHasBackLedge)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Detect Obstacle. But It hasn't BackLedge."));
-		return false;
-	}
-	else
-	{
-		DrawSphereTrace(BackLedgeLocation, 10.f, 5.0f);
-	}
-
-	// 6.물체 Depth || BackFloor 체크
-	FVector BackLedgeNormal = TraversalResult.Obstacle_Data.BackLedgeNormal;
-	FVector BackLedgeTopSurfaceLocation = BackLedgeLocation + FVector(0.f, 0.f, CapsuleHalfHeight + 2.f) + (BackLedgeNormal * (CapsuleRadius + 2.0));
-	FHitResult TopSweepResult = CapsuleTrace(FrontLedgeTopSurfaceLocation, BackLedgeTopSurfaceLocation, CapsuleRadius, CapsuleHalfHeight, false);
-		// 6.1.BackLedge까지 장애물이 없는 경우 : BackLedge까지를 Depth로 지정
-	if (!TopSweepResult.bBlockingHit) 
-	{
-		// 6.1.1.Obstacle Depth Data 저장
-		FVector ObstacleDepthVector = FrontLedgeLocation - BackLedgeLocation;
-		float ObstacleDepth = ObstacleDepthVector.Size2D();
-		TraversalResult.Obstacle_Data.ObstacleDepth = ObstacleDepth;
-		UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth : %f"), ObstacleDepth);
-
-		// 6.1.2.Back Floor Data 저장
-		FVector FloorFrontLocation = BackLedgeLocation + (BackLedgeNormal * (CapsuleRadius + 2.0));
-		float FloorZOffset = ObstacleHeight + 50.f;
-		FVector EndLocation = FloorFrontLocation - FVector(0.f, 0.f, FloorZOffset) + FVector(0.f, 0.f, CapsuleHalfHeight); //플레이어 중심이 바닥에 위치하면 안되므로 CapsuleHalfHeight를 더해준다.
-		FHitResult SurfaceHitResult = CapsuleTrace(BackLedgeTopSurfaceLocation, EndLocation, CapsuleRadius, CapsuleHalfHeight, false);
-
-		if (SurfaceHitResult.bBlockingHit && !SurfaceHitResult.bStartPenetrating) // 착지 지점 있는 경우
-		{
-			TraversalResult.Obstacle_Data.bHasBackFloor = true;
-			TraversalResult.Obstacle_Data.BackFloorLocation = SurfaceHitResult.ImpactPoint;
-			TraversalResult.Obstacle_Data.BackLedgeHeight = (float)FMath::Abs(SurfaceHitResult.ImpactPoint.Z - BackLedgeLocation.Z);
-			UE_LOG(LogTemp, Warning, TEXT("Obstacle Back Ledge Height : %f"), TraversalResult.Obstacle_Data.BackLedgeHeight);
-		}
-		else // 착지 지점 없는 경우
-		{
-			TraversalResult.Obstacle_Data.bHasBackFloor = false;
-		}
-	}
-	else // 6.2.BackLedge 전에 장애물이 감지된 경우 : 장애물까지를 Depth로 지정
-	{
-		FVector ObstacleDepthVector = TopSweepResult.ImpactPoint - FrontLedgeLocation;
-		float ObstacleDepth = ObstacleDepthVector.Size2D();
-		TraversalResult.Obstacle_Data.ObstacleDepth = ObstacleDepth;
-		TraversalResult.Obstacle_Data.bHasBackLedge = false;
-		UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth : %f"), ObstacleDepth);
-	}
-	return true;
-}
-
-
-FHitResult UParkourComponent::TryDetectStepBox(FVector ActorLocation, FVector ActorForward, float CapsuleHalfHeight)
+FHitResult UParkourComponent::TryDetectStepBox(FVector ActorLocation, FVector ActorForward)
 {
 	int32 TraceCount = 10;
 	float Radius = 15.f;
 	float TraceDistance = 50.f;
 	FVector Start = ActorLocation - FVector(0.f, 0.f, CapsuleHalfHeight + TraceDistance / 2);
 
+	//낭떨어지 직전의 바닥 위치 반환 (낭떨어지 감지)
 	FHitResult HitResult = ScanSurfaceEdge(ETraceDirection::Vertical, TraceCount, Start, ActorForward, TraceDistance, Radius * 2, Radius, false, true);
 
 	return HitResult;
 }
 
-bool UParkourComponent::UpdateStepBoxData(FVector EdgeLocation, float Radius, FEnvironmentData& TraversalResult, FVector ActorForward)
+
+bool UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FEnvData& EnvData, FVector ActorLocation)
 {
-	// 1.건너편 StepBox 존재 유무 확인
+	/* return false mean "can't parkour, just jump." */
+
+	/* ----- [Update List] ----- */
+	/* FObstacleData : UpperSurface Data */
+	/* FObstacleData : LandingSurface Data */
+	/* FObstacleData : Obstacle Value */
+
+	// 1.Update Front/BackLedge Transform by ParkourBlock
+	EnvData.Obstacle_Data = Block->UpdateObstacleData(ObstacleHitResult.ImpactPoint, Player->GetActorLocation());
+	EnvData.HitComponent = ObstacleHitResult.GetComponent();
+	FObstacleData& ObsData = EnvData.Obstacle_Data; // notice::It has just Front/Back Ledge Transform.
+
+
+	// 2.Check It has FrontLedge
+	if (!ObsData.bHasFrontLedge)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Obstacle hasn't FrontLedge."));
+		return false;
+	}
+	else
+	{
+		DrawSphereTrace(ObsData.FrontLedgeLocation, 5.f, 5.0f);
+	}
+
+
+	// 3.Update UpperSurface Data (+Check if space to the upper surface is clear)
+	float ZOffset = 5.f + CapsuleHalfHeight;
+	FVector UpperSurfaceLocation = ObsData.FrontLedgeLocation + (-ObsData.FrontLedgeNormal * (CapsuleRadius + 5.f)); 
+	FVector UpperSurfacePlusOffset = UpperSurfaceLocation + FVector(0.f, 0.f, ZOffset);
+	FVector FrontLedgePlusOffset = ObsData.FrontLedgeLocation + FVector(0.f, 0.f, ZOffset);
+	FHitResult UpperPathHit = CapsuleTrace(FrontLedgePlusOffset, UpperSurfacePlusOffset, CapsuleRadius, CapsuleHalfHeight, true);
+	
+	// 3.1.Return if any obstacle is detected.
+	if (UpperPathHit.bBlockingHit || UpperPathHit.bStartPenetrating)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Obstacle hasn't UpperSurface."));
+		return false;
+	}
+	
+	// 3.2.Update UpperSurface Data if any obstacle is not detected.
+	EnvData.Obstacle_Data.bHasUpperSurface = true;
+	EnvData.Obstacle_Data.UpperSurfaceLocation = UpperSurfaceLocation;
+	DrawSphereTrace(UpperSurfaceLocation, 5.f, 5.0f);
+
+	
+	// 4.Update FrontHeight Value
+	float FrontHeight = ObsData.FrontLedgeLocation.Z - (ActorLocation.Z - CapsuleHalfHeight);
+	EnvData.Obstacle_Data.FrontHeight = FrontHeight;
+	UE_LOG(LogTemp, Warning, TEXT("Obstacle Height : %f"), FrontHeight);
+
+	if (!ObsData.bHasBackLedge)
+	{
+		// Do not need anymore data.
+		return true;
+	}
+	else
+	{
+		DrawSphereTrace(ObsData.BackLedgeLocation, 5.f, 5.0f);
+	}
+
+	// 5.Update Depth Value (+Check if space from the FrontLedge to the BackLedge is clear)
+	FVector BackLedgePlusOffset = ObsData.BackLedgeLocation + FVector(0.f, 0.f, ZOffset);
+	FHitResult DepthPathHit = CapsuleTrace(FrontLedgePlusOffset, BackLedgePlusOffset, CapsuleRadius, CapsuleHalfHeight, false);
+	float Depth;
+	
+	if (DepthPathHit.bBlockingHit) // 5.1.Hit : Depth is FrontLedge to HitObject Length.
+	{
+		Depth = GetDistance(ObsData.FrontLedgeLocation, DepthPathHit.ImpactPoint, ObsData.FrontLedgeNormal);
+	}
+	else // 5.2.Miss : Depth is FrontLedge to BackLedge Length.
+	{
+		Depth = GetDistance(ObsData.FrontLedgeLocation, ObsData.BackLedgeLocation, ObsData.FrontLedgeNormal);
+	}
+
+	// 5.3.Compare Depth Length To MinDepth (MinDepth is Length to the FrontLedge to UpperSurface) 
+	float MinDepth = CapsuleRadius + 5.f;
+	if (Depth < MinDepth) 
+	{
+		EnvData.Obstacle_Data.bHasUpperSurface = false;
+		UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth is Short."));
+	}
+
+	if (Depth > MaxObstacleDepth)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth is Long."));
+		return true;
+	}
+
+	EnvData.Obstacle_Data.Depth = Depth;
+	UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth : %f"), Depth);
+
+
+	// 6.Update LandingSurface Data (+Check if space to the Landing surface is clear)
+	// + Update BackDropHeight Value
+	float DistanceOffset = CapsuleRadius + 10.f;
+	FVector BackLedgePlusDistanceOffset = ObsData.BackLedgeLocation + (ObsData.BackLedgeNormal * DistanceOffset);
+	float MaxDropDistance = FrontHeight + 50.f;
+	FVector BackLedgePlusLandingOffset = ObsData.BackLedgeLocation + FVector(0.f, 0.f, -MaxDropDistance);
+	FHitResult DropPathHit = CapsuleTrace(BackLedgePlusDistanceOffset, BackLedgePlusLandingOffset, CapsuleRadius, CapsuleHalfHeight, true);
+	if (!DropPathHit.bBlockingHit)
+	{
+		return true;
+	}
+	float DropHeight = FMath::Abs(BackLedgePlusDistanceOffset.Z - DropPathHit.ImpactPoint.Z);
+	float MinDropHeight = 20.f;
+	if (DropHeight < MinDropHeight)
+	{
+		return true;
+	}
+
+	EnvData.Obstacle_Data.bHasLandingSurface = true;
+	EnvData.Obstacle_Data.BackDropHeight = DropHeight;
+
+	return true;
+}
+
+bool UParkourComponent::UpdateStepBoxData(FVector EdgeLocation, float Radius, FEnvData& EnvData, FVector ActorForward)
+{
+	/* return false mean "can't parkour, just jump." */
+
+	/* ----- [Update List] ----- */
+	/* FStepBoxData : LandingSurface Data */
+	/* FStepBoxData : StepBox Value */
+
+	// 1.Update NextStepBox Data
 	FVector Start = EdgeLocation - FVector(0.f, 0.f, Radius) + (ActorForward * Radius);
 	FHitResult NextStepBoxHitResult = LineTrace(Start, Start + (ActorForward * MaxStepBoxGapDistance), true);
-
-	// 2.ParkourBlock이 아니라면 종료 
 	AParkourBlock* Block = Cast<AParkourBlock>(NextStepBoxHitResult.GetActor());
 	if (Block == nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("NextStepBox isn't ParkourBlock"));
-		TraversalResult.StepBox_Data.bIsOnEdge = true;
 		return false;
 	}
 
-	// 3.Update StepBoxData 
-	TraversalResult = Block->GetLedgeTransformToStepBox(NextStepBoxHitResult.ImpactPoint);
-	TraversalResult.HitComponent = NextStepBoxHitResult.GetComponent();
-	TraversalResult.StepBox_Data.bIsOnEdge = true;
-	TraversalResult.StepBox_Data.GapDepth = FVector::Dist(EdgeLocation, TraversalResult.StepBox_Data.NextFrontLedgeLocation);
+	EnvData.StepBox_Data = Block->UpdateStepBoxData(NextStepBoxHitResult.ImpactPoint);
+	FStepBoxData& BoxData = EnvData.StepBox_Data; // notice::It has just NextStepBox Ledge Transform.
+	EnvData.HitComponent = NextStepBoxHitResult.GetComponent();
 
-	UE_LOG(LogTemp, Warning, TEXT("Step Box Gap : %f"), TraversalResult.StepBox_Data.GapDepth);
+	if (!BoxData.bHasNextFrontLedge)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("NextStepBox hasn't FrontLedge"));
+		return false;
+	}
+
+	// 2.Update GapDepth
+	float Gap = GetDistance(EdgeLocation, BoxData.NextFrontLedgeLocation, BoxData.NextFrontLedgeNormal);
+	EnvData.StepBox_Data.GapDepth = Gap;
+	UE_LOG(LogTemp, Warning, TEXT("Step Box Gap : %f"), Gap);
+
+
+	// 3.Update LandingSurface Data
+	float ZOffset = 5.f + CapsuleHalfHeight;
+	FVector LandingLocation = BoxData.NextFrontLedgeLocation + (-BoxData.NextFrontLedgeNormal * (CapsuleRadius + 5.f));
+	FVector LandingPlusOffset = LandingLocation + FVector(0.f, 0.f, ZOffset);
+	FVector FrontLedgePlusOffset = BoxData.NextFrontLedgeLocation + FVector(0.f, 0.f, ZOffset);
+	FHitResult LandingPathHit = CapsuleTrace(FrontLedgePlusOffset, LandingPlusOffset, CapsuleRadius, CapsuleHalfHeight, true);
+
+	// 3.1.Return if any obstacle is detected.
+	if (LandingPathHit.bBlockingHit || LandingPathHit.bStartPenetrating)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("StepBox hasn't LandingSurface."));
+		return false;
+	}
+
+	// 3.2.Check if there is a floor & Update LandingSurface Data if any obstacle is not detected.
+	FVector LandingMinusOffset = LandingLocation - FVector(0.f, 0.f, ZOffset + 50.f);
+	FHitResult FloorHit = SphereTrace(LandingPlusOffset, LandingMinusOffset, CapsuleRadius / 2.0f, true);
+	if (!FloorHit.bBlockingHit)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("StepBox hasn't LandingSurface.")); 
+		return false;
+	}
+
+	EnvData.StepBox_Data.bHasLandingSurface = true;
+	EnvData.StepBox_Data.LandingSurfaceLocation = FVector(LandingLocation.X, LandingLocation.Y, FloorHit.ImpactPoint.Z);
+	DrawSphereTrace(EnvData.StepBox_Data.LandingSurfaceLocation, 5.f, 5.0f);
 	
 	return true;
 }
@@ -379,6 +556,20 @@ FHitResult UParkourComponent::ScanSurfaceEdge(ETraceDirection TraceDir, int32 Co
 	return FHitResult();
 }
 
+float UParkourComponent::GetDistance(const FVector& StartLocation, const FVector& EndLocation, const FVector& FrontNormal)
+{
+	// 1. Z축을 무시한 Normal 구하기
+	FVector OppositeNormal = -FrontNormal;
+	OppositeNormal.Z = 0.f;
+	OppositeNormal.Normalize();
+
+	// 2. 내적(Dot Product)으로 길이 추출
+	FVector DirectionVector = EndLocation - StartLocation;
+	float Depth = FVector::DotProduct(DirectionVector, OppositeNormal);
+
+	return FMath::Max(0.f, Depth);
+}
+
 
 //=================================
 //      Basic Trace Logic
@@ -408,7 +599,7 @@ FHitResult UParkourComponent::SphereTrace(const FVector& Start, const FVector& E
 }
 
 
-FHitResult UParkourComponent::BoxTrace(FVector Start, FVector End, FVector BoxHalfSize, FRotator Rotation, bool bDrawDebug) const
+FHitResult UParkourComponent::BoxTrace(const FVector& Start, const FVector& End, FVector BoxHalfSize, FRotator Rotation, bool bDrawDebug) const
 {
 	FHitResult HitResult;
 	TArray<AActor*> ActorsToIgnore;
@@ -434,7 +625,7 @@ FHitResult UParkourComponent::BoxTrace(FVector Start, FVector End, FVector BoxHa
 	return HitResult;
 }
 
-FHitResult UParkourComponent::LineTrace(FVector Start, FVector End, bool bDrawDebug) const
+FHitResult UParkourComponent::LineTrace(const FVector& Start, const FVector& End, bool bDrawDebug) const
 {
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
@@ -449,7 +640,7 @@ FHitResult UParkourComponent::LineTrace(FVector Start, FVector End, bool bDrawDe
 	return HitResult;
 }
 
-FHitResult UParkourComponent::CapsuleTrace(FVector& Start, FVector& End, float Radius, float HalfHeight, bool bDrawDebug) const
+FHitResult UParkourComponent::CapsuleTrace(const FVector& Start, const FVector& End, float Radius, float HalfHeight, bool bDrawDebug) const
 {
 	FHitResult HitResult;
 	TArray<AActor*> ActorsToIgnore;
@@ -476,7 +667,7 @@ FHitResult UParkourComponent::CapsuleTrace(FVector& Start, FVector& End, float R
 	return HitResult;
 }
 
-void UParkourComponent::DrawSphereTrace(FVector Center, float Radius, float LifeTime) const
+void UParkourComponent::DrawSphereTrace(const FVector& Center, float Radius, float LifeTime) const
 {
 	DrawDebugSphere(
 		GetWorld(),
@@ -491,22 +682,17 @@ void UParkourComponent::DrawSphereTrace(FVector Center, float Radius, float Life
 	);
 }
 
-void FTraversalChooserParams::UpdateTraversalChooserParams(const FEnvironmentData& CheckResult, ACharacter* Player)
+void FTraversalChooserParams::UpdateTraversalChooserParams(const FEnvData& CheckResult, ACharacter* Player)
 {
 	if (!Player) return;
 
 	// 1.Update Player Movement Info
-	MovementMode = Player->GetCharacterMovement()->MovementMode;
 	Speed = Player->GetVelocity().Size2D();
 
 	// 2.Update Obstacle Info
-	bHasFrontLedge = CheckResult.Obstacle_Data.bHasFrontLedge;
-	bHasUpperSurface = CheckResult.Obstacle_Data.bHasUpperSurface;
-	bHasBackFloor = CheckResult.Obstacle_Data.bHasBackFloor;
-	ObstacleHeight = CheckResult.Obstacle_Data.ObstacleHeight;
-	ObstacleDepth = CheckResult.Obstacle_Data.ObstacleDepth;
+	ObstacleHeight = CheckResult.Obstacle_Data.FrontHeight;
+	ObstacleDepth = CheckResult.Obstacle_Data.Depth;
 
 	// 3.Update Step Box Info
-	bIsOnEdge = CheckResult.StepBox_Data.bIsOnEdge;
 	GapDepth = CheckResult.StepBox_Data.GapDepth;
 }

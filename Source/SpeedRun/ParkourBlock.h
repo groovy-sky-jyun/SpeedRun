@@ -9,7 +9,8 @@
 #include "ParkourComponent.h"
 #include "ParkourBlock.generated.h"
 
-struct FEnvironmentData;
+struct FObstacleData;
+struct FStepBoxData;
 
 UCLASS()
 class SPEEDRUN_API AParkourBlock : public AActor
@@ -68,8 +69,8 @@ public:
 	USplineComponent* FindLedgeClosestToActor(FVector ActorLocation);
 
 	UFUNCTION(BlueprintCallable)
-	FEnvironmentData GetLedgeTransform(FVector HitLocation, FVector ActorLocation);
+	FObstacleData UpdateObstacleData(FVector HitLocation, FVector ActorLocation);
 
 	UFUNCTION(BlueprintCallable)
-	FEnvironmentData GetLedgeTransformToStepBox(FVector HitLocation);
+	FStepBoxData UpdateStepBoxData(FVector HitLocation);
 };
