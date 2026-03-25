@@ -8,7 +8,15 @@
 
 class ASpeedRunCharacter;
 
-
+UENUM(BlueprintType)
+enum ECustomMovementMode
+{
+	CUSTOM_None,
+	CUSTOM_Hang,
+	CUSTOM_WallRun,
+	CUSTOM_Swing,
+	CUSTOM_WallSidle
+};
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SPEEDRUN_API UParkourMovementComponent : public UCharacterMovementComponent
 {

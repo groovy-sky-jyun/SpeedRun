@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SplineComponent.h"
 #include "ParkourComponent.h"
+#include "GameplayTagContainer.h"
 #include "ParkourBlock.generated.h"
 
 struct FObstacleData;
@@ -54,23 +55,29 @@ public:
 
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour Settings", meta = (MakeEditWidget = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Tag")
+	FGameplayTag ParkourTypeTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Config", meta = (MakeEditWidget = true))
 	FVector BlockSize;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Config")
 	float MinLedgeWidth = 60.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings|Config")
 	float StepBoxMinLedgeWidth = 60.f;
 
 
 public:
 	UFUNCTION(BlueprintCallable)
-	USplineComponent* FindLedgeClosestToActor(FVector ActorLocation);
+	FGameplayTag GetParkourTag() const { return ParkourTypeTag; }
 
 	UFUNCTION(BlueprintCallable)
-	FObstacleData UpdateObstacleData(FVector HitLocation, FVector ActorLocation);
+	USplineComponent* FindLedgeClosestToActor(AActor* Actor, FVector ActorLocation);
 
 	UFUNCTION(BlueprintCallable)
-	FStepBoxData UpdateStepBoxData(FVector HitLocation);
+	FObstacleData UpdateObstacleData(AActor* Actor, FVector ActorLocation, FVector HitLocation);
+
+	UFUNCTION(BlueprintCallable)
+	FStepBoxData UpdateStepBoxData(AActor* Actor, FVector HitLocation);
 };

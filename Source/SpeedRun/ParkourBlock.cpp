@@ -4,6 +4,7 @@
 #include "ParkourBlock.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "ParkourComponent.h"
+#include "SpeedRunCharacter.h"
 #include "Math/UnrealMathUtility.h"
 
 // Sets default values
@@ -91,7 +92,7 @@ void AParkourBlock::BeginPlay()
     OppositeLedges.Add(Ledge_Left, Ledge_Right);
 }
 
-USplineComponent* AParkourBlock::FindLedgeClosestToActor(FVector ActorLocation)
+USplineComponent* AParkourBlock::FindLedgeClosestToActor(AActor* Actor, FVector ActorLocation)
 {
     if (Ledges.IsEmpty()) return nullptr;
    
@@ -116,7 +117,7 @@ USplineComponent* AParkourBlock::FindLedgeClosestToActor(FVector ActorLocation)
 
 
 
-FObstacleData AParkourBlock::UpdateObstacleData(FVector HitLocation, FVector ActorLocation)
+FObstacleData AParkourBlock::UpdateObstacleData(AActor* Actor, FVector ActorLocation, FVector HitLocation)
 {
     /* ----- [Update List] ----- */
     /* FrontLedge : Location/Normal */
@@ -124,7 +125,7 @@ FObstacleData AParkourBlock::UpdateObstacleData(FVector HitLocation, FVector Act
 
     FObstacleData CheckResult = {};
 
-    USplineComponent* ClosestLedge = FindLedgeClosestToActor(ActorLocation);
+    USplineComponent* ClosestLedge = FindLedgeClosestToActor(Actor, ActorLocation);
     if (!ClosestLedge || ClosestLedge->GetSplineLength() < MinLedgeWidth)
     {
         return CheckResult;
@@ -169,14 +170,14 @@ FObstacleData AParkourBlock::UpdateObstacleData(FVector HitLocation, FVector Act
 }
 
 
-FStepBoxData AParkourBlock::UpdateStepBoxData(FVector HitLocation)
+FStepBoxData AParkourBlock::UpdateStepBoxData(AActor* Actor, FVector HitLocation)
 {
     /* ----- [Update List] ----- */
     /* NextLedge : Location/Normal */
 
     FStepBoxData CheckResult = {};
 
-    USplineComponent* ClosestLedge = FindLedgeClosestToActor(HitLocation);
+    USplineComponent* ClosestLedge = FindLedgeClosestToActor(Actor, HitLocation);
     if (!ClosestLedge || ClosestLedge->GetSplineLength() < StepBoxMinLedgeWidth)
     {
         return CheckResult;

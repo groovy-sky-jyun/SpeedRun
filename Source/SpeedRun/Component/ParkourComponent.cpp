@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "ParkourComponent.h"
@@ -48,7 +48,7 @@ void UParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 
 //=================================
-//      ¾×¼Ç ¼öÇà (Execution)         
+//      ì•¡ì…˜ ìˆ˜í–‰ (Execution)         
 //=================================
 void UParkourComponent::PerformJumpSequence()
 {
@@ -116,59 +116,39 @@ bool UParkourComponent::TryUpdateEnvData(FEnvData& EnvData)
 
 EParkourActionType UParkourComponent::EvaluateNextAction(const FEnvData& InEnvData)
 {
-	/* Choose New ParkourActionType based on the EnvData*/
+	//** íƒœê·¸ ê¸°ë°˜ ì•¡ì…˜ íŒë³„ **//
+	if (InEnvData.HitParkourTag.IsValid())
+	{
+		static const FGameplayTag Tag_Bar = FGameplayTag::RequestGameplayTag(FName("ParkourBlock.Precision.Bar"));
+		static const FGameplayTag Tag_Pole = FGameplayTag::RequestGameplayTag(FName("ParkourBlock.Precision.Pole"));
+		static const FGameplayTag Tag_WallLedge = FGameplayTag::RequestGameplayTag(FName("ParkourBlock.Precision.WallLedge"));
+		FGameplayTag ParkourTag = InEnvData.HitParkourTag;
+
+		if (ParkourTag.MatchesTag(Tag_Bar))
+		{
+			return EParkourActionType::PARKOUR_Swing;
+		}
+		else if (ParkourTag.MatchesTag(Tag_Pole))
+		{
+			return EParkourActionType::PARKOUR_Pole;
+		}
+		else if (ParkourTag.MatchesTag(Tag_WallLedge))
+		{
+			return EParkourActionType::PARKOUR_WallSidle;
+		}
+		return EParkourActionType::PARKOUR_None;
+	}
+
+	if (InEnvData.Obstacle_Data.FrontHeight < MinHeightBlock)
+	{
+		return EParkourActionType::PARKOUR_None;
+	}
 
 	EMovementMode MovementMode = Player->GetCharacterMovement()->MovementMode;
 
-	switch (MovementMode) {
-	case EMovementMode::MOVE_Walking:
-		// Hasn't FrontLedge -> Hurdle/Jump
-		if (!InEnvData.Obstacle_Data.bHasFrontLedge)
-		{
-			if (InEnvData.StepBox_Data.bHasLandingSurface)
-			{
-				return EParkourActionType::PARKOUR_Hurdle;
-			}
-		}
-
-		if (InEnvData.Obstacle_Data.FrontHeight < 50.f)
-		{
-			return EParkourActionType::PARKOUR_None;
-		}
-
-		// Has FrontLedge && Has UpperSurface -> Vault/Mantle/Hang
-		if (InEnvData.Obstacle_Data.bHasLandingSurface)
-		{
-			if (InEnvData.Obstacle_Data.FrontHeight <= MaxObstacleHeight_Vault)
-			{
-				return EParkourActionType::PARKOUR_Vault;
-			}
-		}
-		
-		if(InEnvData.Obstacle_Data.bHasUpperSurface)
-		{
-			if (InEnvData.Obstacle_Data.FrontHeight <= MaxObstacleHeight_Mantle)
-			{
-				return EParkourActionType::PARKOUR_Mantle;
-			}
-		}
-
-		if (MaxObstacleHeight_Hang <= MaxObstacleHeight_Hang)
-		{
-			return EParkourActionType::PARKOUR_Hang;
-		}
-
-		break;
-	case EMovementMode::MOVE_Falling: // hang
-		if (InEnvData.Obstacle_Data.bHasFrontLedge) return EParkourActionType::PARKOUR_Hang;
-		break;
-	case EMovementMode::MOVE_Flying:
-		break;
-	case EMovementMode::MOVE_None:
-		break;
-	}
-
-
+	if (CanVault(InEnvData, MovementMode)) return EParkourActionType::PARKOUR_Vault;
+	if (CanMantle(InEnvData, MovementMode)) return EParkourActionType::PARKOUR_Mantle;
+	if (CanHang(InEnvData, MovementMode)) return EParkourActionType::PARKOUR_Hang;
 	return EParkourActionType::PARKOUR_None;
 }
 
@@ -205,8 +185,8 @@ void UParkourComponent::ExecuteMontageByActionType(const EParkourActionType Acti
 
 	Player->PlayAnimMontage(CurrentMontage);
 
-	/* ÈÄ¿¡ Ãß°¡
-	// Áö¼Ó¼º ¾×¼Ç ¹°¸® Á¦¾î (Áß·Â ²ô±â)
+	/* í›„ì— ì¶”ê°€
+	// ì§€ì†ì„± ì•¡ì…˜ ë¬¼ë¦¬ ì œì–´ (ì¤‘ë ¥ ë„ê¸°)
 	if (ActionType == EParkourActionType::PARKOUR_Hang || ActionType == EParkourActionType::PARKOUR_WallRun)
 	{
 	  Player->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
@@ -226,12 +206,12 @@ UAnimMontage* UParkourComponent::SelectActionMontageFromCHT(UChooserTable* CHT, 
 	FTraversalChooserParams ChooserData = {};
 	ChooserData.UpdateTraversalChooserParams(InEnvData, Player);
 
-	// 2.Add FChooserEvaluationContext Params (CHT¿¡ ³Ñ°ÜÁÙ ³»¿ë¹°)
+	// 2.Add FChooserEvaluationContext Params (CHTì— ë„˜ê²¨ì¤„ ë‚´ìš©ë¬¼)
 	FChooserEvaluationContext ChooserContext;
 	ChooserContext.AddStructParam(ChooserData);
 	ChooserContext.AddObjectParam(Player);
 
-	// 3.Change ChooserTable To InstancedStruct (ChooserTableÀ» ½ÇÇà °¡´ÉÇÑ Struct ±¸Á¶·Î º¯°æ)
+	// 3.Change ChooserTable To InstancedStruct (ChooserTableì„ ì‹¤í–‰ ê°€ëŠ¥í•œ Struct êµ¬ì¡°ë¡œ ë³€ê²½)
 	FInstancedStruct ChooserStruct = UChooserFunctionLibrary::MakeEvaluateChooser(CHT);
 
 	// 4.Execute ChooserTable
@@ -282,7 +262,7 @@ void UParkourComponent::SetupMotionWarping(const EParkourActionType ActionType, 
 	case EParkourActionType::PARKOUR_Hang:
 		if (ObstacleData.bHasFrontLedge)
 		{
-			// ¼ÕÀ» Â¤À» ¾ÕÂÊ ¸ğ¼­¸®(FrontEdge) À§Ä¡¿Í ³ë¸Ö Àü´Ş
+			// ì†ì„ ì§šì„ ì•ìª½ ëª¨ì„œë¦¬(FrontEdge) ìœ„ì¹˜ì™€ ë…¸ë©€ ì „ë‹¬
 			AddWarpTarget(FName("FrontEdge"), ObstacleData.FrontLedgeLocation, ObstacleData.FrontLedgeNormal);
 		}
 		break;
@@ -294,24 +274,108 @@ void UParkourComponent::SetupMotionWarping(const EParkourActionType ActionType, 
 void UParkourComponent::AddWarpTarget(FName TargetName, FVector Location, FVector Normal)
 {
 	FRotator TargetRotation = (-Normal).Rotation();
-	// Yaw ¸¸ Àû¿ë
+	// Yaw ë§Œ ì ìš©
 	TargetRotation.Pitch = 0.f;
 	TargetRotation.Roll = 0.f;
 
 	WarpComponent->AddOrUpdateWarpTargetFromLocationAndRotation(TargetName, Location, TargetRotation);
 }
 
+bool UParkourComponent::CanVault(const FEnvData& InEnvData, EMovementMode CurrentMode)
+{
+	if (CurrentMode != EMovementMode::MOVE_Walking) return false;
+
+	const FObstacleData& ObsData = InEnvData.Obstacle_Data;
+
+	if (ObsData.FrontHeight > MaxHeightVault) return false;
+	if (ObsData.Depth > MaxDepthVault) return false;
+	if (!ObsData.bHasLandingSurface) return false;
+	
+	return true;
+}
+
+bool UParkourComponent::CanMantle(const FEnvData& InEnvData, EMovementMode CurrentMode)
+{
+	const FObstacleData& ObsData = InEnvData.Obstacle_Data;
+
+	if (CurrentMode == EMovementMode::MOVE_Custom && CurrentMode == static_cast<uint8>(ECustomMovementMode::CUSTOM_Hang))
+	{
+		if (ObsData.Depth >= CapsuleRadius * 2.f)
+		{
+			return true;
+		}
+		return false;
+	}
+
+	if (CurrentMode != EMovementMode::MOVE_Walking) return false;
+
+	if (ObsData.FrontHeight <= MaxHeightVault)
+	{
+		if (ObsData.Depth > MaxDepthVault)
+		{
+			return true;
+		}
+		if (!ObsData.bHasLandingSurface && ObsData.Depth >= CapsuleRadius * 2.f)
+		{
+			return true;
+		}
+	}
+
+	if (ObsData.FrontHeight > MaxHeightVault && ObsData.FrontHeight <= MaxHeightMantle)
+	{
+		if (ObsData.Depth >= CapsuleRadius * 2.f)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UParkourComponent::CanHang(const FEnvData& InEnvData, EMovementMode CurrentMode)
+{
+	const FObstacleData& ObsData = InEnvData.Obstacle_Data;
+
+	if (CurrentMode == EMovementMode::MOVE_Falling)
+	{
+		if (ObsData.bHasFrontLedge)
+		{
+			return true;
+		}
+		return false;
+	}
+
+	if (CurrentMode != EMovementMode::MOVE_Walking) return false;
+
+	if (ObsData.FrontHeight > MaxHeightVault && ObsData.FrontHeight <= MaxHeightMantle)
+	{
+		if (ObsData.Depth < CapsuleRadius * 2.f)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 
 //=================================
-//           È¯°æ °¨Áö 
+//           í™˜ê²½ ê°ì§€ 
 //=================================
 FHitResult UParkourComponent::TryDetectObstacle(FVector ActorLocation, FVector ActorForward)
 {
 	FHitResult HitResult;
+	float Radius = 150.f;
 
-	FVector Start = ActorLocation + FVector(0.f, 0.f, -CapsuleHalfHeight + 40.f);
-	FVector End = Start + ActorForward * 300.f;
-	HitResult = LineTrace(Start, End, true);
+	// 1.ì»¨íŠ¸ë¡¤ëŸ¬ê°€ ë°”ë¼ë³´ëŠ” ë°©í–¥ ê°€ì ¸ì˜¤ê¸°
+	FVector CameraForward = Player->GetControlRotation().Vector();
+
+	// 2.ParkourBlock ê°ì§€ Trace ìƒì„±
+	FVector Start = Player->GetActorLocation() + FVector(0.f, 0.f, 50.f) + (CameraForward * Radius/2);
+	float TraceDistance = 300.f;
+	FVector End = Start + (CameraForward * TraceDistance);
+
+	HitResult = SphereTrace(Start, End, Radius, ECollisionChannel::ECC_GameTraceChannel1, true);
+
 
 	return HitResult;
 }
@@ -323,7 +387,7 @@ FHitResult UParkourComponent::TryDetectStepBox(FVector ActorLocation, FVector Ac
 	float TraceDistance = 50.f;
 	FVector Start = ActorLocation - FVector(0.f, 0.f, CapsuleHalfHeight + TraceDistance / 2);
 
-	//³¶¶³¾îÁö Á÷ÀüÀÇ ¹Ù´Ú À§Ä¡ ¹İÈ¯ (³¶¶³¾îÁö °¨Áö)
+	//ë‚­ë–¨ì–´ì§€ ì§ì „ì˜ ë°”ë‹¥ ìœ„ì¹˜ ë°˜í™˜ (ë‚­ë–¨ì–´ì§€ ê°ì§€)
 	FHitResult HitResult = ScanSurfaceEdge(ETraceDirection::Vertical, TraceCount, Start, ActorForward, TraceDistance, Radius * 2, Radius, false, true);
 
 	return HitResult;
@@ -339,8 +403,9 @@ bool UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 	/* FObstacleData : LandingSurface Data */
 	/* FObstacleData : Obstacle Value */
 
-	// 1.Update Front/BackLedge Transform by ParkourBlock
-	EnvData.Obstacle_Data = Block->UpdateObstacleData(ObstacleHitResult.ImpactPoint, Player->GetActorLocation());
+	// 1.Update ParkourTag, Front/BackLedge Transform by ParkourBlock
+	EnvData.HitParkourTag = Block->GetParkourTag();
+	EnvData.Obstacle_Data = Block->UpdateObstacleData(Player, ObstacleHitResult.ImpactPoint, Player->GetActorLocation());
 	EnvData.HitComponent = ObstacleHitResult.GetComponent();
 	FObstacleData& ObsData = EnvData.Obstacle_Data; // notice::It has just Front/Back Ledge Transform.
 
@@ -359,7 +424,7 @@ bool UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 
 	// 3.Update UpperSurface Data (+Check if space to the upper surface is clear)
 	float ZOffset = 5.f + CapsuleHalfHeight;
-	FVector UpperSurfaceLocation = ObsData.FrontLedgeLocation + (-ObsData.FrontLedgeNormal * (CapsuleRadius + 5.f)); 
+	FVector UpperSurfaceLocation = ObsData.FrontLedgeLocation + (-ObsData.FrontLedgeNormal * 20.f); 
 	FVector UpperSurfacePlusOffset = UpperSurfaceLocation + FVector(0.f, 0.f, ZOffset);
 	FVector FrontLedgePlusOffset = ObsData.FrontLedgeLocation + FVector(0.f, 0.f, ZOffset);
 	FHitResult UpperPathHit = CapsuleTrace(FrontLedgePlusOffset, UpperSurfacePlusOffset, CapsuleRadius, CapsuleHalfHeight, true);
@@ -406,44 +471,20 @@ bool UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 		Depth = GetDistance(ObsData.FrontLedgeLocation, ObsData.BackLedgeLocation, ObsData.FrontLedgeNormal);
 	}
 
-	// 5.3.Compare Depth Length To MinDepth (MinDepth is Length to the FrontLedge to UpperSurface) 
-	float MinDepth = CapsuleRadius + 5.f;
-	if (Depth < MinDepth) 
-	{
-		EnvData.Obstacle_Data.bHasUpperSurface = false;
-		UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth is Short."));
-	}
-
-	if (Depth > MaxObstacleDepth)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth is Long."));
-		return true;
-	}
-
 	EnvData.Obstacle_Data.Depth = Depth;
 	UE_LOG(LogTemp, Warning, TEXT("Obstacle Depth : %f"), Depth);
 
 
 	// 6.Update LandingSurface Data (+Check if space to the Landing surface is clear)
 	// + Update BackDropHeight Value
-	float DistanceOffset = CapsuleRadius + 10.f;
-	FVector BackLedgePlusDistanceOffset = ObsData.BackLedgeLocation + (ObsData.BackLedgeNormal * DistanceOffset);
-	float MaxDropDistance = FrontHeight + 50.f;
-	FVector BackLedgePlusLandingOffset = ObsData.BackLedgeLocation + FVector(0.f, 0.f, -MaxDropDistance);
-	FHitResult DropPathHit = CapsuleTrace(BackLedgePlusDistanceOffset, BackLedgePlusLandingOffset, CapsuleRadius, CapsuleHalfHeight, true);
-	if (!DropPathHit.bBlockingHit)
+	FVector LandingLocation = FVector();
+	float DropHeight = 0.f;
+	if (CanLanding(EnvData, LandingLocation, DropHeight))
 	{
-		return true;
+		EnvData.Obstacle_Data.bHasLandingSurface = true;
+		EnvData.Obstacle_Data.LandingSurfaceLocation = LandingLocation;
+		EnvData.Obstacle_Data.BackDropHeight = DropHeight;
 	}
-	float DropHeight = FMath::Abs(BackLedgePlusDistanceOffset.Z - DropPathHit.ImpactPoint.Z);
-	float MinDropHeight = 20.f;
-	if (DropHeight < MinDropHeight)
-	{
-		return true;
-	}
-
-	EnvData.Obstacle_Data.bHasLandingSurface = true;
-	EnvData.Obstacle_Data.BackDropHeight = DropHeight;
 
 	return true;
 }
@@ -466,7 +507,7 @@ bool UParkourComponent::UpdateStepBoxData(FVector EdgeLocation, float Radius, FE
 		return false;
 	}
 
-	EnvData.StepBox_Data = Block->UpdateStepBoxData(NextStepBoxHitResult.ImpactPoint);
+	EnvData.StepBox_Data = Block->UpdateStepBoxData(Player, NextStepBoxHitResult.ImpactPoint);
 	FStepBoxData& BoxData = EnvData.StepBox_Data; // notice::It has just NextStepBox Ledge Transform.
 	EnvData.HitComponent = NextStepBoxHitResult.GetComponent();
 
@@ -498,7 +539,7 @@ bool UParkourComponent::UpdateStepBoxData(FVector EdgeLocation, float Radius, FE
 
 	// 3.2.Check if there is a floor & Update LandingSurface Data if any obstacle is not detected.
 	FVector LandingMinusOffset = LandingLocation - FVector(0.f, 0.f, ZOffset + 50.f);
-	FHitResult FloorHit = SphereTrace(LandingPlusOffset, LandingMinusOffset, CapsuleRadius / 2.0f, true);
+	FHitResult FloorHit = SphereTrace(LandingPlusOffset, LandingMinusOffset, CapsuleRadius / 2.0f, ECollisionChannel::ECC_GameTraceChannel1, false);
 	if (!FloorHit.bBlockingHit)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("StepBox hasn't LandingSurface.")); 
@@ -527,21 +568,20 @@ FHitResult UParkourComponent::ScanSurfaceEdge(ETraceDirection TraceDir, int32 Co
 		}
 		else
 		{
-
 			StartLocation = Start + (Dir * (GapSize * i));
 			EndLocation = StartLocation + FVector(0.f, 0.f, Distance);
 		}
 
-		FHitResult HitResult = SphereTrace(StartLocation, EndLocation, Radius, bDrawDebug);
+		FHitResult HitResult = SphereTrace(StartLocation, EndLocation, Radius, ECollisionChannel::ECC_GameTraceChannel1, bDrawDebug);
 
 		if (bReturnHit) //immediately return if find surface to floor.
 		{
 			if (HitResult.bBlockingHit) return HitResult;
 		}
-		else { //³¶¶³¾îÁö Á÷ÀüÀÇ ¹Ù´Ú À§Ä¡ ¹İÈ¯ (³¶¶³¾îÁö °¨Áö)
+		else { //ë‚­ë–¨ì–´ì§€ ì§ì „ì˜ ë°”ë‹¥ ìœ„ì¹˜ ë°˜í™˜ (ë‚­ë–¨ì–´ì§€ ê°ì§€)
 			if (HitResult.bBlockingHit)
 			{
-				if (i == Count - 1) //³¶¶³¾îÁö¸¦ °¨ÁöÇÏÁö ¸øÇÑ °æ¿ì
+				if (i == Count - 1) //ë‚­ë–¨ì–´ì§€ë¥¼ ê°ì§€í•˜ì§€ ëª»í•œ ê²½ìš°
 				{
 					return FHitResult();
 				}
@@ -556,14 +596,46 @@ FHitResult UParkourComponent::ScanSurfaceEdge(ETraceDirection TraceDir, int32 Co
 	return FHitResult();
 }
 
+bool UParkourComponent::CanLanding(const FEnvData& InEnvData, FVector& LandingLocation, float& DropHeight)
+{
+	//1. Edge ëª¨ì„œë¦¬ ë’·í¸ì— ë°”ë‹¥ì´ ìˆëŠ”ì§€ í™•ì¸
+	const FObstacleData& ObsData = InEnvData.Obstacle_Data;
+	FVector Start = ObsData.BackLedgeLocation + (ObsData.BackLedgeNormal * (CapsuleRadius + 20.f));
+	float Distance = ObsData.BackLedgeLocation.Z + 50.f; // ìµœëŒ€ ê°ì§€ ê¸¸ì´
+	FHitResult Hit;
+
+	for (int i = 0; i < 3; i++)
+	{
+		FVector StartLocation = Start + (ObsData.BackLedgeNormal * (CapsuleRadius * 2 * i));
+		FVector EndLocation = StartLocation + FVector(0.f, 0.f, -Distance);
+
+		Hit = SphereTrace(StartLocation, EndLocation, CapsuleRadius, ECollisionChannel::ECC_Visibility, false);
+
+		if (!Hit.bBlockingHit)
+		{
+			return false;
+		}
+	}
+
+	//2. ë°”ë‹¥ì´ ìˆë‹¤ë©´ BackLedge ~ ë°”ë‹¥ê¹Œì§€ ë†’ì´ í™•ì¸
+	float Height = FMath::Abs(ObsData.BackLedgeLocation.Z - Hit.ImpactPoint.Z);
+	if (Height > MinHeightBlock)
+	{
+		LandingLocation = Hit.ImpactPoint;
+		DropHeight = Height;
+		return true;
+	}
+
+	return false;
+}
 float UParkourComponent::GetDistance(const FVector& StartLocation, const FVector& EndLocation, const FVector& FrontNormal)
 {
-	// 1. ZÃàÀ» ¹«½ÃÇÑ Normal ±¸ÇÏ±â
+	// 1. Zì¶•ì„ ë¬´ì‹œí•œ Normal êµ¬í•˜ê¸°
 	FVector OppositeNormal = -FrontNormal;
 	OppositeNormal.Z = 0.f;
 	OppositeNormal.Normalize();
 
-	// 2. ³»Àû(Dot Product)À¸·Î ±æÀÌ ÃßÃâ
+	// 2. ë‚´ì (Dot Product)ìœ¼ë¡œ ê¸¸ì´ ì¶”ì¶œ
 	FVector DirectionVector = EndLocation - StartLocation;
 	float Depth = FVector::DotProduct(DirectionVector, OppositeNormal);
 
@@ -574,7 +646,7 @@ float UParkourComponent::GetDistance(const FVector& StartLocation, const FVector
 //=================================
 //      Basic Trace Logic
 //=================================
-FHitResult UParkourComponent::SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const
+FHitResult UParkourComponent::SphereTrace(const FVector& Start, const FVector& End, float Radius, ECollisionChannel TraceChannel, bool bDrawDebug) const
 {
 	FHitResult HitResult;
 	TArray<AActor*> ActorsToIgnore;
@@ -585,15 +657,15 @@ FHitResult UParkourComponent::SphereTrace(const FVector& Start, const FVector& E
 		Start,
 		End,
 		Radius,
-		UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1), // Trace Channel
+		UEngineTypes::ConvertToTraceType(TraceChannel), // Trace Channel
 		false,         // Trace Complex
 		ActorsToIgnore,
 		bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None, // Draw Debug Type
 		HitResult,
 		true,          // Ignore Self
-		FLinearColor::Red,   // µğ¹ö±× ¼± »ö»ó
-		FLinearColor::Green, // È÷Æ® ½Ã »ö»ó
-		5.0f           // µğ¹ö±× ¼± À¯Áö ½Ã°£
+		FLinearColor::Red,   // ë””ë²„ê·¸ ì„  ìƒ‰ìƒ
+		FLinearColor::Green, // íˆíŠ¸ ì‹œ ìƒ‰ìƒ
+		5.0f           // ë””ë²„ê·¸ ì„  ìœ ì§€ ì‹œê°„
 	);
 	return HitResult;
 }
@@ -609,7 +681,7 @@ FHitResult UParkourComponent::BoxTrace(const FVector& Start, const FVector& End,
 		GetWorld(),
 		Start,
 		End,
-		BoxHalfSize, //FVector(°¡·Î, ¼¼·Î, ³ôÀÌ)
+		BoxHalfSize, //FVector(ê°€ë¡œ, ì„¸ë¡œ, ë†’ì´)
 		Rotation,
 		UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1),
 		false,
@@ -646,22 +718,22 @@ FHitResult UParkourComponent::CapsuleTrace(const FVector& Start, const FVector& 
 	TArray<AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(Cast<AActor>(Player));
 
-	// SphereTraceSingle ´ë½Å CapsuleTraceSingleÀ» »ç¿ëÇÕ´Ï´Ù.
+	// SphereTraceSingle ëŒ€ì‹  CapsuleTraceSingleì„ ì‚¬ìš©í•©ë‹ˆë‹¤.
 	UKismetSystemLibrary::CapsuleTraceSingle(
 		GetWorld(),
 		Start,
 		End,
 		Radius,
 		HalfHeight, 
-		UEngineTypes::ConvertToTraceType(ECC_Visibility), //Ä«¸Ş¶ó Ãæµ¹ ¿©ºÎ
+		UEngineTypes::ConvertToTraceType(ECC_Visibility), //ì¹´ë©”ë¼ ì¶©ëŒ ì—¬ë¶€
 		false,         // Trace Complex
 		ActorsToIgnore,
 		bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None, 
 		HitResult,
 		true,          // Ignore Self
-		FLinearColor::Red,   // µğ¹ö±× ¼± »ö»ó
-		FLinearColor::Green, // È÷Æ® ½Ã »ö»ó
-		5.0f           // µğ¹ö±× ¼± À¯Áö ½Ã°£
+		FLinearColor::Red,   // ë””ë²„ê·¸ ì„  ìƒ‰ìƒ
+		FLinearColor::Green, // íˆíŠ¸ ì‹œ ìƒ‰ìƒ
+		5.0f           // ë””ë²„ê·¸ ì„  ìœ ì§€ ì‹œê°„
 	);
 
 	return HitResult;
@@ -673,9 +745,9 @@ void UParkourComponent::DrawSphereTrace(const FVector& Center, float Radius, flo
 		GetWorld(),
 		Center,
 		Radius,             
-		12,                 // Segments (¾ó¸¶³ª µ¿±×¶ş°Ô º¸ÀÏÁö)
+		12,                 // Segments (ì–¼ë§ˆë‚˜ ë™ê·¸ë—ê²Œ ë³´ì¼ì§€)
 		FColor::Cyan,       
-		false,              // bPersistentLines (¿µ±¸ÀûÀ¸·Î ³²±æÁö ¿©ºÎ)
+		false,              // bPersistentLines (ì˜êµ¬ì ìœ¼ë¡œ ë‚¨ê¸¸ì§€ ì—¬ë¶€)
 		LifeTime,              
 		0,                  // DepthPriority
 		1.0f                // Thickness 

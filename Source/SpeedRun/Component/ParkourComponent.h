@@ -8,6 +8,7 @@
 #include "Templates/Function.h"
 #include "Engine/DataTable.h"
 #include "Chooser.h"
+#include "GameplayTagContainer.h"
 #include "ParkourComponent.generated.h"
 
 class ASpeedRunCharacter;
@@ -24,7 +25,10 @@ enum class EParkourActionType : uint8
 	PARKOUR_Vault,
 	PARKOUR_Mantle,
 	PARKOUR_Hang,
-	PARKOUR_WallRun
+	PARKOUR_WallRun,
+	PARKOUR_Swing,
+	PARKOUR_Pole,
+	PARKOUR_WallSidle
 };
 
 UENUM(BlueprintType)
@@ -39,10 +43,10 @@ struct FParkourActionData : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	EParkourActionType ActionType;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAnimMontage> AnimMontage;
 };
 
@@ -52,47 +56,47 @@ struct FObstacleData : public FTableRowBase
 	GENERATED_BODY()
 
 	// FrontLedge Data
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bHasFrontLedge = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector FrontLedgeLocation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector FrontLedgeNormal;
 
 	// UpperSurface Data
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bHasUpperSurface = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector UpperSurfaceLocation;
 
 	// BackLedge Data
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bHasBackLedge = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector BackLedgeLocation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector BackLedgeNormal;
 
 	// LandingSurface Data
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bHasLandingSurface = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector LandingSurfaceLocation;
 
 	// Obstacle Value
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float FrontHeight = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float BackDropHeight = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float Depth = 0.f;
 
 	
@@ -104,24 +108,24 @@ struct FStepBoxData : public FTableRowBase
 	GENERATED_BODY()
 
 	// Next Ledge Data
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bHasNextFrontLedge = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector NextFrontLedgeLocation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector NextFrontLedgeNormal;
 
 	// Landing Surface Data
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bHasLandingSurface = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector LandingSurfaceLocation;
 
 	// Step Box Value
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float GapDepth = 0.f;
 };
 
@@ -130,13 +134,16 @@ struct FEnvData : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FGameplayTag HitParkourTag = FGameplayTag::EmptyTag;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FObstacleData Obstacle_Data;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FStepBoxData StepBox_Data;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UPrimitiveComponent> HitComponent;
 };
 
@@ -145,16 +152,16 @@ struct FTraversalChooserParams : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float Speed = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float ObstacleHeight = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float ObstacleDepth = 0.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float GapDepth = 0.f;
 
 public:
@@ -201,6 +208,9 @@ public:
 
 	void AddWarpTarget(FName TargetName, FVector Location, FVector Normal);
 
+	bool CanVault(const FEnvData& InEnvData, EMovementMode CurrentMode);
+	bool CanMantle(const FEnvData& InEnvData, EMovementMode CurrentMode);
+	bool CanHang(const FEnvData& InEnvData, EMovementMode CurrentMode);
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Anim")
@@ -210,9 +220,6 @@ public:
 	float MaxStepBoxGapDistance = 650.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
-	float MaxObstacleDepth = 200.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
 	float MaxObstacleHeight_Vault = 250;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
@@ -220,6 +227,19 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
 	float MaxObstacleHeight_Mantle = 400;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
+	float MinHeightBlock = 50;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
+	float MaxHeightVault = 150;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
+	float MaxHeightMantle = 250;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
+	float MaxDepthVault = 100;
+
 
 protected:
 	//===== 참조 및 상태 변수 =====//
@@ -253,10 +273,11 @@ private:
 	bool UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FEnvData& EnvData, FVector ActorLocation);
 	bool UpdateStepBoxData(FVector EdgeLocation, float Radius, FEnvData& EnvData, FVector ActorForward);
 	FHitResult ScanSurfaceEdge(ETraceDirection TraceDir, int32 Count, FVector Start, FVector Dir, float Distance, float GapSize, float Radius, bool bReturnHit, bool bDrawDebug) const;
+	bool CanLanding(const FEnvData& InEnvData, FVector& LandingLocation, float& DropHeight);
 	float GetDistance(const FVector& StartLocation, const FVector& EndLocation, const FVector& Normal);
 
 	//===== Basic Trace Logic =====//
-	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, bool bDrawDebug) const;
+	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, ECollisionChannel TraceChannel, bool bDrawDebug) const;
 	FHitResult BoxTrace(const FVector& Start, const FVector& End, FVector BoxHalfSize, FRotator Rotation, bool bDrawDebug) const;
 	FHitResult LineTrace(const FVector& Start, const FVector& End, bool bDrawDebug) const;
 	FHitResult CapsuleTrace(const FVector& Start, const FVector& End, float Radius, float HalfHeight, bool bDrawDebug) const;
