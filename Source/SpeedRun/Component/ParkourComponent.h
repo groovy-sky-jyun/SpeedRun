@@ -21,7 +21,6 @@ UENUM(BlueprintType)
 enum class EParkourActionType : uint8
 {
 	PARKOUR_None,
-	PARKOUR_Hurdle,
 	PARKOUR_Vault,
 	PARKOUR_Mantle,
 	PARKOUR_Hang,
@@ -103,33 +102,6 @@ struct FObstacleData : public FTableRowBase
 };
 
 USTRUCT(BlueprintType)
-struct FStepBoxData : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	// Next Ledge Data
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	bool bHasNextFrontLedge = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector NextFrontLedgeLocation;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector NextFrontLedgeNormal;
-
-	// Landing Surface Data
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	bool bHasLandingSurface = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector LandingSurfaceLocation;
-
-	// Step Box Value
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float GapDepth = 0.f;
-};
-
-USTRUCT(BlueprintType)
 struct FEnvData : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -139,9 +111,6 @@ struct FEnvData : public FTableRowBase
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FObstacleData Obstacle_Data;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FStepBoxData StepBox_Data;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UPrimitiveComponent> HitComponent;
@@ -209,7 +178,7 @@ public:
 	void AddWarpTarget(FName TargetName, FVector Location, FVector Normal);
 
 	bool CanVault(const FEnvData& InEnvData, EMovementMode CurrentMode);
-	bool CanMantle(const FEnvData& InEnvData, EMovementMode CurrentMode);
+	bool CanMantle(const FEnvData& InEnvData, EMovementMode CurrentMode, uint8 CustomMode);
 	bool CanHang(const FEnvData& InEnvData, EMovementMode CurrentMode);
 
 public:
@@ -269,10 +238,7 @@ private:
 private:
 	//===== 장애물 및 환경 감지 =====//
 	FHitResult TryDetectObstacle(FVector ActorLocation, FVector ActorForward);
-	FHitResult TryDetectStepBox(FVector ActorLocation, FVector ActorForward);
 	bool UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FEnvData& EnvData, FVector ActorLocation);
-	bool UpdateStepBoxData(FVector EdgeLocation, float Radius, FEnvData& EnvData, FVector ActorForward);
-	FHitResult ScanSurfaceEdge(ETraceDirection TraceDir, int32 Count, FVector Start, FVector Dir, float Distance, float GapSize, float Radius, bool bReturnHit, bool bDrawDebug) const;
 	bool CanLanding(const FEnvData& InEnvData, FVector& LandingLocation, float& DropHeight);
 	float GetDistance(const FVector& StartLocation, const FVector& EndLocation, const FVector& Normal);
 

@@ -89,16 +89,7 @@ bool UParkourComponent::TryUpdateEnvData(FEnvData& EnvData)
 	// 1.not found Obstacle
 	if (!ObstacleHitResult.bBlockingHit)
 	{
-		FHitResult StepBoxLastHitResult = TryDetectStepBox(ActorLocation, ActorForward);
-
-		// 1.1.not found Step Box -> Jump
-		if (!StepBoxLastHitResult.bBlockingHit)
-		{
-			return false; 
-		}
-
-		// 1.2.found Step Box -> Update StepBoxData
-		return UpdateStepBoxData(StepBoxLastHitResult.ImpactPoint, 15.f, EnvData, ActorForward);
+		return false;
 	}
 
 	// 2.found Obstacle
@@ -145,9 +136,10 @@ EParkourActionType UParkourComponent::EvaluateNextAction(const FEnvData& InEnvDa
 	}
 
 	EMovementMode MovementMode = Player->GetCharacterMovement()->MovementMode;
+	uint8 CustomMode = Player->GetParkourMovement()->CustomMovementMode;
 
 	if (CanVault(InEnvData, MovementMode)) return EParkourActionType::PARKOUR_Vault;
-	if (CanMantle(InEnvData, MovementMode)) return EParkourActionType::PARKOUR_Mantle;
+	if (CanMantle(InEnvData, MovementMode, CustomMode)) return EParkourActionType::PARKOUR_Mantle;
 	if (CanHang(InEnvData, MovementMode)) return EParkourActionType::PARKOUR_Hang;
 	return EParkourActionType::PARKOUR_None;
 }
@@ -230,7 +222,6 @@ void UParkourComponent::SetupMotionWarping(const EParkourActionType ActionType, 
 
 	WarpComponent->RemoveAllWarpTargets();
 	const FObstacleData& ObstacleData = InEnvData.Obstacle_Data;
-	const FStepBoxData& StepBoxData = InEnvData.StepBox_Data;
 
 	switch (ActionType){
 	case EParkourActionType::PARKOUR_Vault:
@@ -241,12 +232,6 @@ void UParkourComponent::SetupMotionWarping(const EParkourActionType ActionType, 
 		if (ObstacleData.bHasLandingSurface)
 		{
 			AddWarpTarget(FName("DropLanding"), ObstacleData.LandingSurfaceLocation, ObstacleData.FrontLedgeNormal);
-		}
-		break;
-	case EParkourActionType::PARKOUR_Hurdle:
-		if (StepBoxData.bHasNextFrontLedge)
-		{
-			AddWarpTarget(FName("Landing"), StepBoxData.LandingSurfaceLocation, StepBoxData.NextFrontLedgeNormal);
 		}
 		break;
 	case EParkourActionType::PARKOUR_Mantle:
@@ -289,22 +274,17 @@ bool UParkourComponent::CanVault(const FEnvData& InEnvData, EMovementMode Curren
 
 	if (ObsData.FrontHeight > MaxHeightVault) return false;
 	if (ObsData.Depth > MaxDepthVault) return false;
-	if (!ObsData.bHasLandingSurface) return false;
 	
 	return true;
 }
 
-bool UParkourComponent::CanMantle(const FEnvData& InEnvData, EMovementMode CurrentMode)
+bool UParkourComponent::CanMantle(const FEnvData& InEnvData, EMovementMode CurrentMode, uint8 CustomMode)
 {
 	const FObstacleData& ObsData = InEnvData.Obstacle_Data;
-
-	if (CurrentMode == EMovementMode::MOVE_Custom && CurrentMode == static_cast<uint8>(ECustomMovementMode::CUSTOM_Hang))
+	// CurrentMode / CustomMode
+	if (CurrentMode == EMovementMode::MOVE_Custom && CustomMode == static_cast<uint8>(ECustomMovementMode::CUSTOM_Hang))
 	{
-		if (ObsData.Depth >= CapsuleRadius * 2.f)
-		{
-			return true;
-		}
-		return false;
+		return ObsData.Depth >= CapsuleRadius * 2.f;
 	}
 
 	if (CurrentMode != EMovementMode::MOVE_Walking) return false;
@@ -312,10 +292,6 @@ bool UParkourComponent::CanMantle(const FEnvData& InEnvData, EMovementMode Curre
 	if (ObsData.FrontHeight <= MaxHeightVault)
 	{
 		if (ObsData.Depth > MaxDepthVault)
-		{
-			return true;
-		}
-		if (!ObsData.bHasLandingSurface && ObsData.Depth >= CapsuleRadius * 2.f)
 		{
 			return true;
 		}
@@ -337,11 +313,7 @@ bool UParkourComponent::CanHang(const FEnvData& InEnvData, EMovementMode Current
 
 	if (CurrentMode == EMovementMode::MOVE_Falling)
 	{
-		if (ObsData.bHasFrontLedge)
-		{
-			return true;
-		}
-		return false;
+		return ObsData.bHasFrontLedge;
 	}
 
 	if (CurrentMode != EMovementMode::MOVE_Walking) return false;
@@ -379,20 +351,6 @@ FHitResult UParkourComponent::TryDetectObstacle(FVector ActorLocation, FVector A
 
 	return HitResult;
 }
-
-FHitResult UParkourComponent::TryDetectStepBox(FVector ActorLocation, FVector ActorForward)
-{
-	int32 TraceCount = 10;
-	float Radius = 15.f;
-	float TraceDistance = 50.f;
-	FVector Start = ActorLocation - FVector(0.f, 0.f, CapsuleHalfHeight + TraceDistance / 2);
-
-	//낭떨어지 직전의 바닥 위치 반환 (낭떨어지 감지)
-	FHitResult HitResult = ScanSurfaceEdge(ETraceDirection::Vertical, TraceCount, Start, ActorForward, TraceDistance, Radius * 2, Radius, false, true);
-
-	return HitResult;
-}
-
 
 bool UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FEnvData& EnvData, FVector ActorLocation)
 {
@@ -487,113 +445,6 @@ bool UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 	}
 
 	return true;
-}
-
-bool UParkourComponent::UpdateStepBoxData(FVector EdgeLocation, float Radius, FEnvData& EnvData, FVector ActorForward)
-{
-	/* return false mean "can't parkour, just jump." */
-
-	/* ----- [Update List] ----- */
-	/* FStepBoxData : LandingSurface Data */
-	/* FStepBoxData : StepBox Value */
-
-	// 1.Update NextStepBox Data
-	FVector Start = EdgeLocation - FVector(0.f, 0.f, Radius) + (ActorForward * Radius);
-	FHitResult NextStepBoxHitResult = LineTrace(Start, Start + (ActorForward * MaxStepBoxGapDistance), true);
-	AParkourBlock* Block = Cast<AParkourBlock>(NextStepBoxHitResult.GetActor());
-	if (Block == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("NextStepBox isn't ParkourBlock"));
-		return false;
-	}
-
-	EnvData.StepBox_Data = Block->UpdateStepBoxData(Player, NextStepBoxHitResult.ImpactPoint);
-	FStepBoxData& BoxData = EnvData.StepBox_Data; // notice::It has just NextStepBox Ledge Transform.
-	EnvData.HitComponent = NextStepBoxHitResult.GetComponent();
-
-	if (!BoxData.bHasNextFrontLedge)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("NextStepBox hasn't FrontLedge"));
-		return false;
-	}
-
-	// 2.Update GapDepth
-	float Gap = GetDistance(EdgeLocation, BoxData.NextFrontLedgeLocation, BoxData.NextFrontLedgeNormal);
-	EnvData.StepBox_Data.GapDepth = Gap;
-	UE_LOG(LogTemp, Warning, TEXT("Step Box Gap : %f"), Gap);
-
-
-	// 3.Update LandingSurface Data
-	float ZOffset = 5.f + CapsuleHalfHeight;
-	FVector LandingLocation = BoxData.NextFrontLedgeLocation + (-BoxData.NextFrontLedgeNormal * (CapsuleRadius + 5.f));
-	FVector LandingPlusOffset = LandingLocation + FVector(0.f, 0.f, ZOffset);
-	FVector FrontLedgePlusOffset = BoxData.NextFrontLedgeLocation + FVector(0.f, 0.f, ZOffset);
-	FHitResult LandingPathHit = CapsuleTrace(FrontLedgePlusOffset, LandingPlusOffset, CapsuleRadius, CapsuleHalfHeight, true);
-
-	// 3.1.Return if any obstacle is detected.
-	if (LandingPathHit.bBlockingHit || LandingPathHit.bStartPenetrating)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("StepBox hasn't LandingSurface."));
-		return false;
-	}
-
-	// 3.2.Check if there is a floor & Update LandingSurface Data if any obstacle is not detected.
-	FVector LandingMinusOffset = LandingLocation - FVector(0.f, 0.f, ZOffset + 50.f);
-	FHitResult FloorHit = SphereTrace(LandingPlusOffset, LandingMinusOffset, CapsuleRadius / 2.0f, ECollisionChannel::ECC_GameTraceChannel1, false);
-	if (!FloorHit.bBlockingHit)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("StepBox hasn't LandingSurface.")); 
-		return false;
-	}
-
-	EnvData.StepBox_Data.bHasLandingSurface = true;
-	EnvData.StepBox_Data.LandingSurfaceLocation = FVector(LandingLocation.X, LandingLocation.Y, FloorHit.ImpactPoint.Z);
-	DrawSphereTrace(EnvData.StepBox_Data.LandingSurfaceLocation, 5.f, 5.0f);
-	
-	return true;
-}
-
-FHitResult UParkourComponent::ScanSurfaceEdge(ETraceDirection TraceDir, int32 Count, FVector Start, FVector Dir, float Distance, float GapSize, float Radius, bool bReturnHit, bool bDrawDebug) const
-{
-	FHitResult LastHitResult;
-
-	for (int i = 0; i < Count; i++)
-	{
-		FVector StartLocation, EndLocation;
-
-		if (TraceDir == ETraceDirection::Horizontal)
-		{
-			StartLocation = Start +  FVector(0.f, 0.f, GapSize * i);
-			EndLocation = StartLocation + Dir * Distance;
-		}
-		else
-		{
-			StartLocation = Start + (Dir * (GapSize * i));
-			EndLocation = StartLocation + FVector(0.f, 0.f, Distance);
-		}
-
-		FHitResult HitResult = SphereTrace(StartLocation, EndLocation, Radius, ECollisionChannel::ECC_GameTraceChannel1, bDrawDebug);
-
-		if (bReturnHit) //immediately return if find surface to floor.
-		{
-			if (HitResult.bBlockingHit) return HitResult;
-		}
-		else { //낭떨어지 직전의 바닥 위치 반환 (낭떨어지 감지)
-			if (HitResult.bBlockingHit)
-			{
-				if (i == Count - 1) //낭떨어지를 감지하지 못한 경우
-				{
-					return FHitResult();
-				}
-				LastHitResult = HitResult;
-			}
-			else
-			{
-				return LastHitResult;
-			}
-		}
-	}
-	return FHitResult();
 }
 
 bool UParkourComponent::CanLanding(const FEnvData& InEnvData, FVector& LandingLocation, float& DropHeight)
@@ -764,7 +615,4 @@ void FTraversalChooserParams::UpdateTraversalChooserParams(const FEnvData& Check
 	// 2.Update Obstacle Info
 	ObstacleHeight = CheckResult.Obstacle_Data.FrontHeight;
 	ObstacleDepth = CheckResult.Obstacle_Data.Depth;
-
-	// 3.Update Step Box Info
-	GapDepth = CheckResult.StepBox_Data.GapDepth;
 }

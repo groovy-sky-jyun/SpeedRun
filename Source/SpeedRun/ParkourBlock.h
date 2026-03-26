@@ -11,7 +11,6 @@
 #include "ParkourBlock.generated.h"
 
 struct FObstacleData;
-struct FStepBoxData;
 
 UCLASS()
 class SPEEDRUN_API AParkourBlock : public AActor
@@ -77,7 +76,4 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	FObstacleData UpdateObstacleData(AActor* Actor, FVector ActorLocation, FVector HitLocation);
-
-	UFUNCTION(BlueprintCallable)
-	FStepBoxData UpdateStepBoxData(AActor* Actor, FVector HitLocation);
 };

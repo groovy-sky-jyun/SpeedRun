@@ -168,38 +168,3 @@ FObstacleData AParkourBlock::UpdateObstacleData(AActor* Actor, FVector ActorLoca
 
     return CheckResult;
 }
-
-
-FStepBoxData AParkourBlock::UpdateStepBoxData(AActor* Actor, FVector HitLocation)
-{
-    /* ----- [Update List] ----- */
-    /* NextLedge : Location/Normal */
-
-    FStepBoxData CheckResult = {};
-
-    USplineComponent* ClosestLedge = FindLedgeClosestToActor(Actor, HitLocation);
-    if (!ClosestLedge || ClosestLedge->GetSplineLength() < StepBoxMinLedgeWidth)
-    {
-        return CheckResult;
-    }
-
-    //Spline에서 HitLocation와 가장 가까운 위치(점) 찾기
-    FVector LocalClosestPoint = ClosestLedge->FindLocationClosestToWorldLocation(HitLocation, ESplineCoordinateSpace::Local);
-    //특정 좌표가 Spline 시작점으로 부터 몇 cm 떨어져 있는지 계산
-    float Distance = ClosestLedge->GetDistanceAlongSplineAtLocation(LocalClosestPoint, ESplineCoordinateSpace::Local);
-    //Spline 안에 플레이어 발이 위치할 수 있도록 위치 보정
-    float MinWidth = StepBoxMinLedgeWidth / 2.f;
-    float MaxWidth = ClosestLedge->GetSplineLength() - MinWidth;
-    float ClampedDistance = FMath::Clamp(Distance, MinWidth, MaxWidth);
-
-    FTransform SplineTransform = ClosestLedge->GetTransformAtDistanceAlongSpline(ClampedDistance, ESplineCoordinateSpace::World);
-    FVector NextFrontSplineForward = SplineTransform.GetRotation().GetForwardVector();
-    FVector NextFrontLedgeNormal = NextFrontSplineForward.RotateAngleAxis(-90.0f, FVector::UpVector); // Z축 기준으로 -90도 회전
-
-    CheckResult.bHasNextFrontLedge = true;
-    CheckResult.NextFrontLedgeLocation = SplineTransform.GetLocation();
-    CheckResult.NextFrontLedgeNormal = NextFrontLedgeNormal;
-
-
-    return CheckResult;
-}
