@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -175,11 +173,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Action")
 	void SetupMotionWarping(const EParkourActionType ActionType, const FEnvData& InEnvData);
 
+	void AlignToLedge(const FEnvData& InEnvData);
 	void AddWarpTarget(FName TargetName, FVector Location, FVector Normal);
+	
 
 	bool CanVault(const FEnvData& InEnvData, EMovementMode CurrentMode);
 	bool CanMantle(const FEnvData& InEnvData, EMovementMode CurrentMode, uint8 CustomMode);
 	bool CanHang(const FEnvData& InEnvData, EMovementMode CurrentMode);
+
+	UFUNCTION(BlueprintCallable, Category = "Action|Hang")
+	bool IsHanging() const { return bIsHanging; }
+
+	UFUNCTION(BlueprintCallable, Category = "Action|Hang")
+	void DropFromHang();
+
+
+protected:
+	void EnterHangState();
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Anim")
@@ -231,6 +241,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Data")
 	bool bCanParkour = false;
+
+	UPROPERTY(VisibleAnywhere, Category = "Data")
+	bool bIsHanging = false;
 
 	float CapsuleRadius;
 	float CapsuleHalfHeight;

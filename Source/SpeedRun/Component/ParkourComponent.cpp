@@ -75,8 +75,18 @@ void UParkourComponent::PerformJumpSequence()
 		return;
 	}
 
-	// 3.Play Montage with CHT, MotionWarping
-	ExecuteMontageByActionType(CurrentAction, EnvData);
+	if (CurrentAction == EParkourActionType::PARKOUR_Hang)
+	{
+		AlignToLedge(EnvData);
+
+		EnterHangState();
+	}
+	else
+	{
+		// 3.Play Montage with CHT, MotionWarping
+		ExecuteMontageByActionType(CurrentAction, EnvData);
+	}
+	
 }
 
 bool UParkourComponent::TryUpdateEnvData(FEnvData& EnvData)
@@ -174,17 +184,12 @@ void UParkourComponent::ExecuteMontageByActionType(const EParkourActionType Acti
 
 	// 3.Set and Play Animation
 	SetupMotionWarping(ActionType, InEnvData);
-
 	Player->PlayAnimMontage(CurrentMontage);
 
-	/* 후에 추가
-	// 지속성 액션 물리 제어 (중력 끄기)
-	if (ActionType == EParkourActionType::PARKOUR_Hang || ActionType == EParkourActionType::PARKOUR_WallRun)
+	if (ActionType == EParkourActionType::PARKOUR_Hang)
 	{
-	  Player->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
-	  Player->GetCharacterMovement()->StopMovementImmediately();
-		}
-	*/
+		EnterHangState();
+	}
 }
 
 UAnimMontage* UParkourComponent::SelectActionMontageFromCHT(UChooserTable* CHT, const FEnvData& InEnvData)
@@ -254,6 +259,23 @@ void UParkourComponent::SetupMotionWarping(const EParkourActionType ActionType, 
 	default:
 		break;
 	}
+}
+
+void UParkourComponent::AlignToLedge(const FEnvData& InEnvData)
+{
+	const FObstacleData& ObsData = InEnvData.Obstacle_Data;
+
+	FRotator TargetRotation = (ObsData.FrontLedgeNormal).Rotation();
+	TargetRotation.Pitch = 0.f; 
+	TargetRotation.Roll = 0.f;
+
+	FVector TargetLocation = ObsData.FrontLedgeLocation - (ObsData.FrontLedgeNormal * (CapsuleRadius * 2 + 28.f));
+
+	// 손 위치가 Ledge에 맞도록 조절
+	float HeightOffset = CapsuleHalfHeight + 25.f;
+	TargetLocation.Z -= HeightOffset;
+
+	Player->SetActorLocationAndRotation(TargetLocation, TargetRotation);
 }
 
 void UParkourComponent::AddWarpTarget(FName TargetName, FVector Location, FVector Normal)
@@ -327,6 +349,33 @@ bool UParkourComponent::CanHang(const FEnvData& InEnvData, EMovementMode Current
 	}
 
 	return false;
+}
+
+void UParkourComponent::DropFromHang()
+{
+	if (!bIsHanging) return;
+
+	bIsHanging = false;
+
+	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
+	{
+		AnimInstance->StopAllMontages(0.2f);
+	}
+
+	ParkourMovement->SetMovementMode(MOVE_Falling);
+	ParkourMovement->CustomMovementMode = ECustomMovementMode::CUSTOM_None;
+
+	Player->GetCharacterMovement()->Velocity = FVector::ZeroVector;
+}
+
+void UParkourComponent::EnterHangState()
+{
+	if (bIsHanging) return;
+
+	bIsHanging = true;
+
+	Player->GetCharacterMovement()->StopMovementImmediately();
+	Player->GetCharacterMovement()->SetMovementMode(MOVE_Custom, static_cast<uint8>(ECustomMovementMode::CUSTOM_Hang));
 }
 
 

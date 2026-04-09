@@ -89,9 +89,7 @@ void ASpeedRunCharacter::HandleMove(const FInputActionValue& Value)
 
 void ASpeedRunCharacter::HandleUp(const FInputActionValue& Value)
 {
-	if (!ParkourMovementComponent) return;
-
-	ParkourComponent->PerformJumpSequence();
+	DoUp();
 }
 
 void ASpeedRunCharacter::HandleDown(const FInputActionValue& Value)
@@ -122,31 +120,58 @@ void ASpeedRunCharacter::DoLook(float Yaw, float Pitch)
 
 void ASpeedRunCharacter::DoMove(float Right, float Forward)
 {
-	if (GetController() != nullptr)
+	if (!GetController()) return;
+
+	if (ParkourComponent && ParkourComponent->IsHanging())
 	{
-		// find out which way is forward
-		const FRotator Rotation = GetController()->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-		// get forward vector
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-
-		// get right vector 
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-		// add movement 
-		AddMovementInput(ForwardDirection, Forward);
-		AddMovementInput(RightDirection, Right);
+		if (Forward > 0.5f)
+		{
+			ParkourComponent->DropFromHang();
+			ParkourComponent->PerformJumpSequence();
+		}
+		return;
 	}
+
+	// find out which way is forward
+	const FRotator Rotation = GetController()->GetControlRotation();
+	const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+	// get forward vector
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	// get right vector 
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+	// add movement 
+	AddMovementInput(ForwardDirection, Forward);
+	AddMovementInput(RightDirection, Right);
 }
 
 void ASpeedRunCharacter::DoUp()
 {
+	if (ParkourComponent->IsHanging())
+	{
+		ParkourComponent->DropFromHang();
+		ParkourComponent->PerformJumpSequence();
+		return;
+	}
+
+	if (ParkourComponent)
+	{
+		ParkourComponent->PerformJumpSequence();
+		return;
+	}
+
 	Jump();
 }
 
 void ASpeedRunCharacter::DoDown()
 {
+	if (ParkourComponent->IsHanging())
+	{
+		ParkourComponent->DropFromHang();
+		return;
+	}
+
 	if (CanCrouch())
 	{
 		if (!GetCharacterMovement()->IsCrouching())
@@ -157,13 +182,15 @@ void ASpeedRunCharacter::DoDown()
 		{
 			UnCrouch();
 		}
+		return;
 	}
 }
 
 void ASpeedRunCharacter::DoDash()
 {
-	FVector ForwardDir = GetActorForwardVector();
+	if (ParkourComponent->IsHanging()) return;
 
+	FVector ForwardDir = GetActorForwardVector();
 	LaunchCharacter(ForwardDir * DashDistance, true, true);
 }
 

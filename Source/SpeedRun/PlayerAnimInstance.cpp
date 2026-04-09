@@ -48,6 +48,10 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	float ClampCalculatedDirection = FMath::Clamp(CalculatedDirection, -45.0f, 45.0f);
 	Direction = Movement->bOrientRotationToMovement ? ClampCalculatedDirection : CalculatedDirection;
 
+	if (ParkourComponent)
+	{
+		bIsHanging = ParkourComponent->IsHanging();
+	}
 
 	//bCanMove = ParkourComponent->GetCanMove();
 

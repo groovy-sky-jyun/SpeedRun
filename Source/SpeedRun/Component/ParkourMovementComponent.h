@@ -37,6 +37,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Speed")
 	float MaxClimbSpeed = 250.f;
 
+	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
+
+
+private:
+	void PhysHang(float deltaTime, int32 Iterations);
+	void PhysWallRun(float deltaTime, int32 Iterations);
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Physics")
