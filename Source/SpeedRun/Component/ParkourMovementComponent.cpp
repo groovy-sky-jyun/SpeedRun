@@ -36,11 +36,29 @@ void UParkourMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 
 void UParkourMovementComponent::PhysHang(float deltaTime, int32 Iterations)
 {
-	Velocity = FVector::ZeroVector;
+	if (deltaTime < MIN_TICK_TIME) return;
 
-	Acceleration = FVector::ZeroVector;
+	FVector WallNormal = UpdatedComponent->GetForwardVector() * -1.f;
+	FVector WallRight = FVector::CrossProduct(FVector::UpVector, WallNormal).GetSafeNormal();
 
-	//물리 이동 계산 종료
+	// 입력값과 WallRight 일치하는지 확인 -> 키 입력의 왼쪽/오른쪽 구분
+	float InputDir = FVector::DotProduct(Acceleration.GetSafeNormal(), WallRight);
+
+	if (FMath::Abs(InputDir) > 0.1f)
+	{
+		Velocity = WallRight * (InputDir > 0 ? MaxShimmySpeed : -MaxShimmySpeed);
+	}
+	else
+	{
+		Velocity = FMath::VInterpTo(Velocity, FVector::ZeroVector, deltaTime, 60.f);
+	}
+
+	Velocity.Z = 0.f;
+
+	FVector Adjusted = Velocity * deltaTime;
+	FHitResult Hit(1.f);
+	SafeMoveUpdatedComponent(Adjusted, UpdatedComponent->GetComponentQuat(), true, Hit);
+
 	UpdateComponentVelocity();
 }
 

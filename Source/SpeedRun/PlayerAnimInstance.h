@@ -57,6 +57,21 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour")
 	bool bIsHanging;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour")
+	float ShimmySpeed;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|IK")
+	FVector HandIKLocationL;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|IK")
+	FVector HandIKLocationR;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|IK")
+	FRotator HandIKRotation;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|IK")
+	float HandIKAlpha;
+
 	/*
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	bool bCanMove;
@@ -79,20 +94,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
 	bool bOverrideFootIK;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	FVector HandIKLocationL;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	FVector HandIKLocationR;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	bool bLedgeHasHandSurfaceL;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	bool bLedgeHasHandSurfaceR;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	float HandIKTargetAlpha; */
+ */
 
 
 public:

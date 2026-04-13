@@ -122,12 +122,16 @@ void ASpeedRunCharacter::DoMove(float Right, float Forward)
 {
 	if (!GetController()) return;
 
-	if (ParkourComponent && ParkourComponent->IsHanging())
+	if (ParkourComponent && ParkourComponent->bIsHanging)
 	{
 		if (Forward > 0.5f)
 		{
-			ParkourComponent->DropFromHang();
 			ParkourComponent->PerformJumpSequence();
+		}
+
+		if (FMath::Abs(Right) > 0.01f)
+		{
+			AddMovementInput(GetActorRightVector(), Right);
 		}
 		return;
 	}
@@ -148,7 +152,7 @@ void ASpeedRunCharacter::DoMove(float Right, float Forward)
 
 void ASpeedRunCharacter::DoUp()
 {
-	if (ParkourComponent->IsHanging())
+	if (ParkourComponent->bIsHanging)
 	{
 		ParkourComponent->DropFromHang();
 		ParkourComponent->PerformJumpSequence();
@@ -166,7 +170,7 @@ void ASpeedRunCharacter::DoUp()
 
 void ASpeedRunCharacter::DoDown()
 {
-	if (ParkourComponent->IsHanging())
+	if (ParkourComponent->bIsHanging)
 	{
 		ParkourComponent->DropFromHang();
 		return;
@@ -188,7 +192,7 @@ void ASpeedRunCharacter::DoDown()
 
 void ASpeedRunCharacter::DoDash()
 {
-	if (ParkourComponent->IsHanging()) return;
+	if (ParkourComponent->bIsHanging) return;
 
 	FVector ForwardDir = GetActorForwardVector();
 	LaunchCharacter(ForwardDir * DashDistance, true, true);

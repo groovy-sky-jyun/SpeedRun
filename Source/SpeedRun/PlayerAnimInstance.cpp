@@ -38,61 +38,44 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	bIsFalling = Movement->IsFalling();
 
-	/*
-	* Calculate direction using the delta between the velocity and the actor rotation. 
-	* When the character is not strafing, 
-	* clamp the value between - and + 45 degrees so that backwards animations do not play when turning around, 
-	* but running into wall looks better.
-	*/
 	float CalculatedDirection = UKismetAnimationLibrary::CalculateDirection(Velocity, Character->GetActorRotation());
 	float ClampCalculatedDirection = FMath::Clamp(CalculatedDirection, -45.0f, 45.0f);
 	Direction = Movement->bOrientRotationToMovement ? ClampCalculatedDirection : CalculatedDirection;
 
 	if (ParkourComponent)
 	{
-		bIsHanging = ParkourComponent->IsHanging();
-	}
+		bIsHanging = ParkourComponent->bIsHanging;
 
-	//bCanMove = ParkourComponent->GetCanMove();
+		if (bIsHanging)
+		{
+			// 내적 +-로 방향 추출
+			ShimmySpeed = FVector::DotProduct(Velocity, Character->GetActorRightVector());
+
+			const FEnvData& EnvData = ParkourComponent->CurrentEnvData;
+			FVector LedgeLocation = EnvData.Obstacle_Data.FrontLedgeLocation;
+			FVector LedgeNormal = EnvData.Obstacle_Data.FrontLedgeNormal;
+
+			FVector WallRight = FVector::CrossProduct(LedgeNormal, FVector::UpVector).GetSafeNormal();
+
+			float HandSpread = 50.f; //양 손 간격
+
+			HandIKLocationL = LedgeLocation - (WallRight * HandSpread);
+			HandIKLocationR = LedgeLocation + (WallRight * HandSpread);
+
+			HandIKRotation = LedgeNormal.Rotation();
+
+			HandIKAlpha = FMath::FInterpTo(HandIKAlpha, 1.f, DeltaSeconds, 25.f);
+		}
+		else
+		{
+			ShimmySpeed = 0.f;
+			HandIKAlpha = FMath::FInterpTo(HandIKAlpha, 0.f, DeltaSeconds, 20.f);
+		}
+	}
 
 	//bOverrideFootIK = ParkourComponent->GetOverrideFootIK();
 	//bLedgeHasFootSurfaceL = ParkourComponent->GetLedgeHasFootSurfaceL();
 	//bLedgeHasFootSurfaceR = ParkourComponent->GetLedgeHasFootSurfaceR();
 	//LeftFootAlpha = FMath::FInterpTo(LeftFootAlpha, float(!bLedgeHasFootSurfaceL), GetWorld()->GetDeltaSeconds(), 0.2f);
 	//RightFootAlpha = FMath::FInterpTo(RightFootAlpha, float(!bLedgeHasFootSurfaceR), GetWorld()->GetDeltaSeconds(), 0.2f);
-	
-
-	//HandIKLocationL = ParkourComponent->GetHandIKLocationL();
-	//HandIKLocationR = ParkourComponent->GetHandIKLocationR();
-	//bLedgeHasHandSurfaceL = ParkourComponent->GetLedgeHasHandSurfaceL();
-	//bLedgeHasHandSurfaceR = ParkourComponent->GetLedgeHasHandSurfaceR();
 }
-
-/*
-void UPlayerAnimInstance::AnimNotify_ToHangBlendOut()
-{
-	ParkourComponent->SetIsOnLedge(true);
-}
-
-void UPlayerAnimInstance::AnimNotify_ToHangEnd()
-{
-	if (UAnimMontage* CurrentMontage = GetCurrentActiveMontage())
-	{
-		Movement->StopMovementImmediately();
-		Movement->SetMovementMode(EMovementMode::MOVE_None);
-	}
-}
-
-void UPlayerAnimInstance::AnimNotify_ClimbUpEnd()
-{
-	ParkourComponent->OnEndParkourAction();
-
-	Player->SetActorEnableCollision(true);
-	Movement->SetMovementMode(EMovementMode::MOVE_Walking);
-
-	//Player->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-
-	Player->GetParkourComponent()->SetCanMove(true);
-	bCanMove = true;
-	
-}*/

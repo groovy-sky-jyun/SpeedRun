@@ -142,6 +142,7 @@ FObstacleData AParkourBlock::UpdateObstacleData(AActor* Actor, FVector ActorLoca
     float ClampedDistance = FMath::Clamp(Distance, MinWidth, MaxWidth);
 
     FTransform SplineTransform = ClosestLedge->GetTransformAtDistanceAlongSpline(ClampedDistance, ESplineCoordinateSpace::World);
+    
     FVector FrontSplineForward = SplineTransform.GetRotation().GetForwardVector();
     FVector FrontLedgeNormal = FrontSplineForward.RotateAngleAxis(-90.0f, FVector::UpVector); // Z축 기준으로 -90도 회전
 

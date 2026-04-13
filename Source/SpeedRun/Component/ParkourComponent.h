@@ -3,49 +3,14 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
-#include "Templates/Function.h"
-#include "Engine/DataTable.h"
-#include "Chooser.h"
-#include "GameplayTagContainer.h"
 #include "ParkourComponent.generated.h"
 
 class ASpeedRunCharacter;
 class UParkourMovementComponent;
 class UMotionWarpingComponent;
 class AParkourBlock;
-
-
-UENUM(BlueprintType)
-enum class EParkourActionType : uint8
-{
-	PARKOUR_None,
-	PARKOUR_Vault,
-	PARKOUR_Mantle,
-	PARKOUR_Hang,
-	PARKOUR_WallRun,
-	PARKOUR_Swing,
-	PARKOUR_Pole,
-	PARKOUR_WallSidle
-};
-
-UENUM(BlueprintType)
-enum class ETraceDirection : uint8
-{
-	Horizontal,
-	Vertical
-};
-
-USTRUCT(BlueprintType)
-struct FParkourActionData : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	EParkourActionType ActionType;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TObjectPtr<UAnimMontage> AnimMontage;
-};
+class UAnimInstance;
+class UParkourActionBase;
 
 USTRUCT(BlueprintType)
 struct FObstacleData : public FTableRowBase
@@ -57,46 +22,43 @@ struct FObstacleData : public FTableRowBase
 	bool bHasFrontLedge = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector FrontLedgeLocation;
+	FVector FrontLedgeLocation = FVector::ZeroVector;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector FrontLedgeNormal;
-
-	// UpperSurface Data
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	bool bHasUpperSurface = false;
+	FVector FrontLedgeNormal = FVector::ZeroVector;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector UpperSurfaceLocation;
+	float FrontHeight = 0.f;
 
 	// BackLedge Data
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bHasBackLedge = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector BackLedgeLocation;
+	FVector BackLedgeLocation = FVector::ZeroVector;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector BackLedgeNormal;
+	FVector BackLedgeNormal = FVector::ZeroVector;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	float Depth = 0.f;
+
+	// UpperSurface Data
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bHasUpperSurface = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	FVector UpperSurfaceLocation = FVector::ZeroVector;
 
 	// LandingSurface Data
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bHasLandingSurface = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector LandingSurfaceLocation;
-
-	// Obstacle Value
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float FrontHeight = 0.f;
+	FVector LandingSurfaceLocation = FVector::ZeroVector;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float BackDropHeight = 0.f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float Depth = 0.f;
-
-	
 };
 
 USTRUCT(BlueprintType)
@@ -107,32 +69,14 @@ struct FEnvData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FGameplayTag HitParkourTag = FGameplayTag::EmptyTag;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FObstacleData Obstacle_Data;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TObjectPtr<UPrimitiveComponent> HitComponent;
-};
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UPrimitiveComponent> HitComponent = nullptr;
 
-USTRUCT(BlueprintType)
-struct FTraversalChooserParams : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float Speed = 0.f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float ObstacleHeight = 0.f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float ObstacleDepth = 0.f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float GapDepth = 0.f;
-
-public:
-	void UpdateTraversalChooserParams(const FEnvData& CheckResult, ACharacter* Player);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float CurrentSpeed = 0.f;
 };
 
 
@@ -155,78 +99,54 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	//===== 액션 수행 (Execution) =====//
-	UFUNCTION(BlueprintCallable, Category = "Action")
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
 	void PerformJumpSequence();
 
-	UFUNCTION(BlueprintCallable, Category = "Action")
-	bool TryUpdateEnvData(FEnvData& EnvData);
+	UParkourActionBase* EvaluateNextAction(const FEnvData& EnvData);
 
-	UFUNCTION(BlueprintCallable, Category = "Action")
-	EParkourActionType EvaluateNextAction(const FEnvData& InEnvData);
-
-	UFUNCTION(BlueprintCallable, Category = "Action")
-	void ExecuteMontageByActionType(const EParkourActionType ActionType, const FEnvData& InEnvData);
-
-	UFUNCTION(BlueprintCallable, Category = "Action")
-	UAnimMontage* SelectActionMontageFromCHT(UChooserTable* CHT, const FEnvData& InEnvData);
-
-	UFUNCTION(BlueprintCallable, Category = "Action")
-	void SetupMotionWarping(const EParkourActionType ActionType, const FEnvData& InEnvData);
-
-	void AlignToLedge(const FEnvData& InEnvData);
-	void AddWarpTarget(FName TargetName, FVector Location, FVector Normal);
-	
-
-	bool CanVault(const FEnvData& InEnvData, EMovementMode CurrentMode);
-	bool CanMantle(const FEnvData& InEnvData, EMovementMode CurrentMode, uint8 CustomMode);
-	bool CanHang(const FEnvData& InEnvData, EMovementMode CurrentMode);
-
-	UFUNCTION(BlueprintCallable, Category = "Action|Hang")
-	bool IsHanging() const { return bIsHanging; }
-
-	UFUNCTION(BlueprintCallable, Category = "Action|Hang")
+	//===== Action State =====//
+	UFUNCTION(BlueprintCallable, Category = "Action|State")
 	void DropFromHang();
 
-
-protected:
+	UFUNCTION(BlueprintCallable, Category = "Action|State")
 	void EnterHangState();
 
+	void AlignToLedge(const FEnvData& EnvData);
+
+	//===== Motion Warping =====//
+	void AddWarpTarget(FName TargetName, FVector Location, FVector Normal);
+	void ClearAllWarpTargets();
+
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Anim")
-	TMap<EParkourActionType, UChooserTable*> ActionToCHT;
+	//===== Property =====//
+	UPROPERTY(VisibleAnywhere, Category = "Parkour|State")
+	bool bIsHanging = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
-	float MaxStepBoxGapDistance = 650.f;
+	UPROPERTY(EditAnywhere, Instanced, Category = "Parkour|Actions")
+	TArray<UParkourActionBase*> RegisteredActions;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
-	float MaxObstacleHeight_Vault = 250;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
-	float MaxObstacleHeight_Hang = 500;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
-	float MaxObstacleHeight_Mantle = 400;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
-	float MinHeightBlock = 50;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
-	float MaxHeightVault = 150;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
-	float MaxHeightMantle = 250;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setting|Value")
-	float MaxDepthVault = 100;
+	UPROPERTY()
+	FEnvData CurrentEnvData;
 
 
-protected:
+private:
+	//===== Detect Environment =====//
+	bool TryUpdateEnvData(FEnvData& EnvData);
+	FHitResult TryDetectObstacle(FVector ActorLocation, FVector ActorForward);
+	bool UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FEnvData& EnvData, FVector ActorLocation);
+	bool CanLanding(const FEnvData& EnvData, FVector& LandingLocation, float& DropHeight);
+	float GetDistance(const FVector& StartLocation, const FVector& EndLocation, const FVector& Normal);
+
+	//===== Basic Trace Logic =====//
+	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, ECollisionChannel TraceChannel, bool bDrawDebug) const;
+	FHitResult CapsuleTrace(const FVector& Start, const FVector& End, float Radius, float HalfHeight, bool bDrawDebug) const;
+	void DrawSphereTrace(const FVector& Center, float Radius, float LifeTime) const;
+
+
+private:
 	//===== 참조 및 상태 변수 =====//
 	UPROPERTY()
 	TObjectPtr<ASpeedRunCharacter> Player;
-
-	UPROPERTY()
-	TObjectPtr<class UParkourMovementComponent> ParkourMovement;
 
 	UPROPERTY()
 	TObjectPtr<UAnimInstance> AnimInstance;
@@ -234,33 +154,17 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UMotionWarpingComponent> WarpComponent;
 
-
-private:
-	UPROPERTY(VisibleAnywhere, Category = "Data")
-	EParkourActionType CurrentAction = EParkourActionType::PARKOUR_None;
-
-	UPROPERTY(VisibleAnywhere, Category = "Data")
-	bool bCanParkour = false;
-
-	UPROPERTY(VisibleAnywhere, Category = "Data")
-	bool bIsHanging = false;
+	UPROPERTY()
+	TObjectPtr<class UParkourMovementComponent> ParkourMovement;
 
 	float CapsuleRadius;
 	float CapsuleHalfHeight;
+	float MinHeightBlock = 50.f;
 
+
+/*
 private:
-	//===== 장애물 및 환경 감지 =====//
-	FHitResult TryDetectObstacle(FVector ActorLocation, FVector ActorForward);
-	bool UpdateObstacleData(FHitResult ObstacleHitResult, AParkourBlock* Block, FEnvData& EnvData, FVector ActorLocation);
-	bool CanLanding(const FEnvData& InEnvData, FVector& LandingLocation, float& DropHeight);
-	float GetDistance(const FVector& StartLocation, const FVector& EndLocation, const FVector& Normal);
-
-	//===== Basic Trace Logic =====//
-	FHitResult SphereTrace(const FVector& Start, const FVector& End, float Radius, ECollisionChannel TraceChannel, bool bDrawDebug) const;
 	FHitResult BoxTrace(const FVector& Start, const FVector& End, FVector BoxHalfSize, FRotator Rotation, bool bDrawDebug) const;
 	FHitResult LineTrace(const FVector& Start, const FVector& End, bool bDrawDebug) const;
-	FHitResult CapsuleTrace(const FVector& Start, const FVector& End, float Radius, float HalfHeight, bool bDrawDebug) const;
-	void DrawSphereTrace(const FVector& Center, float Radius, float LifeTime) const;
-
-
+	*/
 };

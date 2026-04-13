@@ -14,17 +14,6 @@ class UInputAction;
 struct FInputActionValue;
 
 
-UENUM(BlueprintType)
-enum class EInputType : uint8
-{
-	NONE,
-	MOVE,
-	UP,
-	DOWN,
-	SPRINT,
-	INTERACT
-};
-
 UCLASS(abstract)
 class ASpeedRunCharacter : public ACharacter
 {

@@ -34,8 +34,12 @@ protected:
 
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Speed")
-	float MaxClimbSpeed = 250.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour|Hang")
+	float MaxShimmySpeed = 90.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour|Hang")
+	float ShimmyInterpSpeed = 10.f;
+
 
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 
