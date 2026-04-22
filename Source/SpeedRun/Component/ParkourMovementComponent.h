@@ -41,10 +41,12 @@ protected:
 	float ShimmyInterpSpeed = 10.f;
 
 
+
+protected:
+	virtual float GetMaxSpeed() const override;
+
+
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
-
-
-private:
 	void PhysHang(float deltaTime, int32 Iterations);
 	void PhysWallRun(float deltaTime, int32 Iterations);
 
@@ -55,4 +57,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Physics")
 	bool IsWalk() const;
 
+
+private:
+	float MaxWalkableAngle = 75.f;
 };

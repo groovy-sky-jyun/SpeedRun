@@ -10,6 +10,7 @@ UParkourMovementComponent::UParkourMovementComponent()
 	bOrientRotationToMovement = true;
 	RotationRate = FRotator(0.0f, 500.0f, 0.0f);
 	MinAnalogWalkSpeed = 20.f;
+	SetWalkableFloorAngle(MaxWalkableAngle); //50도 이상부터는 걷기 불가능
 }
 
 void UParkourMovementComponent::BeginPlay()
@@ -19,6 +20,38 @@ void UParkourMovementComponent::BeginPlay()
 	Player = Cast<ASpeedRunCharacter>(GetOwner());
 }
 
+// 각도에 따른 저항이 포함된 속도 구하기
+float UParkourMovementComponent::GetMaxSpeed() const
+{
+	float MaxSpeed = Super::GetMaxSpeed();
+
+	if (MovementMode == MOVE_Walking && CurrentFloor.bBlockingHit) //바닥에 닿아 있을 때
+	{
+		// 플레이어가 가려는 방향
+		FVector MoveDirection = Acceleration.GetSafeNormal();
+		// 바닥 법선 벡터
+		FVector FloorNormal = CurrentFloor.HitResult.ImpactNormal;
+		// 음수: 오르막길 / 양수: 내리막길
+		float SlopeDot = FVector::DotProduct(MoveDirection, FloorNormal);
+
+		if (SlopeDot < 0.f)
+		{
+			// 바닥 각도 계산
+			float CurrentAngle = FMath::RadiansToDegrees(FMath::Acos(FloorNormal.Z));
+			// 각도에 따라 1.0 ~ 0.3 으로 조절
+			float SpeedMultiplier = FMath::GetMappedRangeValueClamped(
+				FVector2D(0.f, MaxWalkableAngle), // 각도 범위
+				FVector2D(1.f, 0.05f), // 출력 범위
+				CurrentAngle //실제 바닥 각도
+			);
+			MaxSpeed *= SpeedMultiplier;
+		}
+	}
+	return MaxSpeed;
+}
+
+
+
 void UParkourMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 {
 	Super::PhysCustom(deltaTime, Iterations);
@@ -27,10 +60,9 @@ void UParkourMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 	{
 	case CUSTOM_Hang:
 		PhysHang(deltaTime, Iterations);
-	case CUSTOM_WallRun:
-		PhysWallRun(deltaTime, Iterations);
-	default:
 		break;
+	default:
+		return;
 	}
 }
 

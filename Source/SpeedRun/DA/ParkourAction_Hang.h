@@ -18,4 +18,6 @@ public:
 	virtual float Evaluate(UParkourComponent* Component, const FEnvData& EnvData, ASpeedRunCharacter* Player) const override;
 	virtual void ExecuteAction(UParkourComponent* Component, const FEnvData& EnvData, ASpeedRunCharacter* Player) const override;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour")
+	FGameplayTag WindowLedgeTag;
 };

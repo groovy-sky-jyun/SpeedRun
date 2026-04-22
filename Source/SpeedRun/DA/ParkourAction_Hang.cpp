@@ -14,6 +14,11 @@ float UParkourAction_Hang::Evaluate(UParkourComponent* Component, const FEnvData
 	if (!ObsData.bHasFrontLedge) return -1.0f;
 	if (Component->bIsHanging) return -1.0f;
 
+	if (EnvData.HitParkourTag == WindowLedgeTag)
+	{
+		return 100.f;
+	}
+
 	EMovementMode CurrentMode = Player->GetCharacterMovement()->MovementMode;
 
 	if (CurrentMode == MOVE_Falling)
@@ -35,8 +40,6 @@ float UParkourAction_Hang::Evaluate(UParkourComponent* Component, const FEnvData
 void UParkourAction_Hang::ExecuteAction(UParkourComponent* Component, const FEnvData& EnvData, ASpeedRunCharacter* Player) const
 {
 	const FObstacleData& ObsData = EnvData.Obstacle_Data;
-
-	//Component->AlignToLedge(EnvData);
 
 	Player->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
 	Player->GetCharacterMovement()->Velocity = FVector::ZeroVector;

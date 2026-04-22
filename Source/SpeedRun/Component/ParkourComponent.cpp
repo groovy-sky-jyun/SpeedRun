@@ -12,13 +12,6 @@
 #include "ParkourActionBase.h"
 #include "Animation/AnimInstance.h"
 
-/*
-#include "Animation/AnimMontage.h"
-
-#include "Kismet/KismetTextLibrary.h"
-#include "Kismet/GameplayStatics.h"
-*/
-
 UParkourComponent::UParkourComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -102,35 +95,6 @@ UParkourActionBase* UParkourComponent::EvaluateNextAction(const FEnvData& EnvDat
 	}
 
 	return BestAction;
-
-	/* 태그 기반 액션 판별 
-	if (EnvData.HitParkourTag.IsValid())
-	{
-		static const FGameplayTag Tag_Bar = FGameplayTag::RequestGameplayTag(FName("ParkourBlock.Precision.Bar"));
-		static const FGameplayTag Tag_Pole = FGameplayTag::RequestGameplayTag(FName("ParkourBlock.Precision.Pole"));
-		static const FGameplayTag Tag_WallLedge = FGameplayTag::RequestGameplayTag(FName("ParkourBlock.Precision.WallLedge"));
-		FGameplayTag ParkourTag = EnvData.HitParkourTag;
-
-		if (ParkourTag.MatchesTag(Tag_Bar))
-		{
-			return EParkourActionType::PARKOUR_Swing;
-		}
-		else if (ParkourTag.MatchesTag(Tag_Pole))
-		{
-			return EParkourActionType::PARKOUR_Pole;
-		}
-		else if (ParkourTag.MatchesTag(Tag_WallLedge))
-		{
-			return EParkourActionType::PARKOUR_WallSidle;
-		}
-		return EParkourActionType::PARKOUR_None;
-	}
-
-	if (EnvData.Obstacle_Data.FrontHeight < MinHeightBlock)
-	{
-		return EParkourActionType::PARKOUR_None;
-	}
-	*/
 }
 
 
