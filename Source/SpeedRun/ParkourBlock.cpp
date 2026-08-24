@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+Ôªø// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "ParkourBlock.h"
@@ -36,19 +36,19 @@ void AParkourBlock::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
 
-    // 1. Static Mesh¿« ≈©±‚ ¿⁄µø ¡∂¿˝ 
+    // 1. Static MeshÏùò ÌÅ¨Í∏∞ ÏûêÎèô Ï°∞Ï†à 
     BlockSize.X = FMath::Max(BlockSize.X, 1.0);
     BlockSize.Y = FMath::Max(BlockSize.Y, 1.0);
     BlockSize.Z = FMath::Max(BlockSize.Z, 1.0);
 
-    // (±‚∫ª ≈•∫Í∞° 100x100x100 ±‚¡ÿ¿Ãπ«∑Œ, BlockSize∏¶ 100¿∏∑Œ ≥™¥´ ∞™¿Ã Scale)
+    // (Í∏∞Î≥∏ ÌÅêÎ∏åÍ∞Ä 100x100x100 Í∏∞Ï§ÄÏù¥ÎØÄÎ°ú, BlockSizeÎ•º 100ÏúºÎ°ú ÎÇòÎàà Í∞íÏù¥ Scale)
     StaticMesh->SetRelativeScale3D(BlockSize / 100.f);
 
     float MaxX = BlockSize.X;
     float MaxY = BlockSize.Y;
     float MaxZ = BlockSize.Z;
 
-    // 3. ∞¢ Ω∫«√∂Û¿Œ¿« ¿ßƒ°∏¶ ≈•∫Í ∏º≠∏Æø° ¡§»Æ»˜ ∏¬√„
+    // 3. Í∞Å Ïä§ÌîåÎùºÏù∏Ïùò ÏúÑÏπòÎ•º ÌÅêÎ∏å Î™®ÏÑúÎ¶¨Ïóê Ï†ïÌôïÌûà ÎßûÏ∂§
     auto SetupLedge = [](USplineComponent* Spline, FVector StartPos, FVector EndPos)
     {
         if (Spline)
@@ -61,16 +61,16 @@ void AParkourBlock::OnConstruction(const FTransform& Transform)
         }
     };
 
-    // æ’∏È (Y=0 ∏º≠∏Æ / X∞° 0ø°º≠ MaxX∑Œ ¡¯«‡)
+    // ÏïûÎ©¥ (Y=0 Î™®ÏÑúÎ¶¨ / XÍ∞Ä 0ÏóêÏÑú MaxXÎ°ú ÏßÑÌñâ)
     SetupLedge(Ledge_Front, FVector(0.f, 0.f, MaxZ), FVector(MaxX, 0.f, MaxZ));
 
-    // µﬁ∏È (Y=MaxY ∏º≠∏Æ / X∞° MaxXø°º≠ 0¿∏∑Œ ¡¯«‡)
+    // Îí∑Î©¥ (Y=MaxY Î™®ÏÑúÎ¶¨ / XÍ∞Ä MaxXÏóêÏÑú 0ÏúºÎ°ú ÏßÑÌñâ)
     SetupLedge(Ledge_Back, FVector(MaxX, MaxY, MaxZ), FVector(0.f, MaxY, MaxZ));
 
-    // øﬁ¬  (X=0 ∏º≠∏Æ / Y∞° MaxYø°º≠ 0¿∏∑Œ ¡¯«‡)
+    // ÏôºÏ™Ω (X=0 Î™®ÏÑúÎ¶¨ / YÍ∞Ä MaxYÏóêÏÑú 0ÏúºÎ°ú ÏßÑÌñâ)
     SetupLedge(Ledge_Left, FVector(0.f, MaxY, MaxZ), FVector(0.f, 0.f, MaxZ));
 
-    // ø¿∏•¬  (X=MaxX ∏º≠∏Æ / Y∞° 0ø°º≠ MaxY∑Œ ¡¯«‡)
+    // Ïò§Î•∏Ï™Ω (X=MaxX Î™®ÏÑúÎ¶¨ / YÍ∞Ä 0ÏóêÏÑú MaxYÎ°ú ÏßÑÌñâ)
     SetupLedge(Ledge_Right, FVector(MaxX, 0.f, MaxZ), FVector(MaxX, MaxY, MaxZ));
 }
 
@@ -132,11 +132,11 @@ FObstacleData AParkourBlock::UpdateObstacleData(AActor* Actor, FVector ActorLoca
     }
 
     // 1.Save FrontLedge Data 
-    // 1.1.Splineø°º≠ HitLocationøÕ ∞°¿Â ∞°±ÓøÓ ¿ßƒ°(¡°) √£±‚
+    // 1.1.SplineÏóêÏÑú HitLocationÏôÄ Í∞ÄÏû• Í∞ÄÍπåÏö¥ ÏúÑÏπò(Ï†ê) Ï∞æÍ∏∞
     FVector LocalClosestPoint = ClosestLedge->FindLocationClosestToWorldLocation(HitLocation, ESplineCoordinateSpace::Local);
-    // 1.2.∆Ø¡§ ¡¬«•∞° Spline Ω√¿€¡°¿∏∑Œ ∫Œ≈Õ ∏Ó cm ∂≥æÓ¡Æ ¿÷¥¬¡ˆ ∞ËªÍ
+    // 1.2.ÌäπÏ†ï Ï¢åÌëúÍ∞Ä Spline ÏãúÏûëÏ†êÏúºÎ°ú Î∂ÄÌÑ∞ Î™á cm Îñ®Ïñ¥Ï†∏ ÏûàÎäîÏßÄ Í≥ÑÏÇ∞
     float Distance = ClosestLedge->GetDistanceAlongSplineAtLocation(LocalClosestPoint, ESplineCoordinateSpace::Local);
-    // 1.3.Spline æ»ø° «√∑π¿ÃæÓ º’¿Ã ¿ßƒ°«“ ºˆ ¿÷µµ∑œ ¿ßƒ° ∫∏¡§
+    // 1.3.Spline ÏïàÏóê ÌîåÎ†àÏù¥Ïñ¥ ÏÜêÏù¥ ÏúÑÏπòÌï† Ïàò ÏûàÎèÑÎ°ù ÏúÑÏπò Î≥¥Ï†ï
     float MinWidth = MinLedgeWidth / 2.f;
     float MaxWidth = ClosestLedge->GetSplineLength() - MinWidth;
     float ClampedDistance = FMath::Clamp(Distance, MinWidth, MaxWidth);
@@ -144,7 +144,7 @@ FObstacleData AParkourBlock::UpdateObstacleData(AActor* Actor, FVector ActorLoca
     FTransform SplineTransform = ClosestLedge->GetTransformAtDistanceAlongSpline(ClampedDistance, ESplineCoordinateSpace::World);
     
     FVector FrontSplineForward = SplineTransform.GetRotation().GetForwardVector();
-    FVector FrontLedgeNormal = FrontSplineForward.RotateAngleAxis(-90.0f, FVector::UpVector); // Z√‡ ±‚¡ÿ¿∏∑Œ -90µµ »∏¿¸
+    FVector FrontLedgeNormal = FrontSplineForward.RotateAngleAxis(-90.0f, FVector::UpVector); // ZÏ∂ï Í∏∞Ï§ÄÏúºÎ°ú -90ÎèÑ ÌöåÏ†Ñ
 
     CheckResult.bHasFrontLedge = true;
     CheckResult.FrontLedgeLocation = SplineTransform.GetLocation();
@@ -161,7 +161,7 @@ FObstacleData AParkourBlock::UpdateObstacleData(AActor* Actor, FVector ActorLoca
     USplineComponent* BackSpline = *BackSplinePtr;
     FTransform BackSplineTransform = BackSpline->FindTransformClosestToWorldLocation(CheckResult.FrontLedgeLocation, ESplineCoordinateSpace::World);
     FVector BackSplineForward = BackSplineTransform.GetRotation().GetForwardVector();
-    FVector BackLedgeNormal = BackSplineForward.RotateAngleAxis(-90.0f, FVector::UpVector); // Z√‡ ±‚¡ÿ¿∏∑Œ -90µµ »∏¿¸
+    FVector BackLedgeNormal = BackSplineForward.RotateAngleAxis(-90.0f, FVector::UpVector); // ZÏ∂ï Í∏∞Ï§ÄÏúºÎ°ú -90ÎèÑ ÌöåÏ†Ñ
     
     CheckResult.bHasBackLedge = true;
     CheckResult.BackLedgeLocation = BackSplineTransform.GetLocation();

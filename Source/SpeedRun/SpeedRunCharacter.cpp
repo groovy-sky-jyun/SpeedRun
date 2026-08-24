@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+ï»¿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "SpeedRunCharacter.h"
 #include "Engine/LocalPlayer.h"
@@ -51,7 +51,7 @@ void ASpeedRunCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	// ¸ğµç ÄÄÆ÷³ÍÆ®°¡ ¼¼ÆÃµÈ Á÷ÈÄ¿¡ ¾ÈÀüÇÏ°Ô Ä³½ºÆÃÇÏ¿© ÀúÀå
+	// ëª¨ë“  ì»´í¬ë„ŒíŠ¸ê°€ ì„¸íŒ…ëœ ì§í›„ì— ì•ˆì „í•˜ê²Œ ìºìŠ¤íŒ…í•˜ì—¬ ì €ì¥
 	ParkourMovementComponent = Cast<UParkourMovementComponent>(GetCharacterMovement());
 }
 
@@ -104,7 +104,7 @@ void ASpeedRunCharacter::HandleDash(const FInputActionValue& Value)
 
 void ASpeedRunCharacter::HandleInteract(const FInputActionValue& Value)
 {
-	// if »óÈ£ÀÛ¿ë ¹°Ã¼¿¡ focus µÈ °æ¿ì
+	// if ìƒí˜¸ì‘ìš© ë¬¼ì²´ì— focus ëœ ê²½ìš°
 	DoInteract();
 }
 

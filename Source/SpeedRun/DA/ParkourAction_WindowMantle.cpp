@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "DA/ParkourAction_WindowMantle.h"
@@ -49,7 +49,7 @@ void UParkourAction_WindowMantle::ExecuteAction(UParkourComponent* Component, co
 	UCharacterMovementComponent* MovementComponent = Player->GetCharacterMovement();
 	if (MovementComponent->CustomMovementMode == static_cast<uint8>(ECustomMovementMode::CUSTOM_Hang))
 	{
-		MovementComponent->SetMovementMode(MOVE_Flying); // Áß·Â ¹«½ÃÇÏ°í ¾Ö´Ï¸ÞÀÌ¼Ç ¼öÇà
+		MovementComponent->SetMovementMode(MOVE_Flying); // ì¤‘ë ¥ ë¬´ì‹œí•˜ê³  ì• ë‹ˆë©”ì´ì…˜ ìˆ˜í–‰
 		MovementComponent->Velocity = FVector::ZeroVector;
 	}
 

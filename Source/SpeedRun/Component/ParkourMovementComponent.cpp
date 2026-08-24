@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "ParkourMovementComponent.h"
@@ -10,7 +10,7 @@ UParkourMovementComponent::UParkourMovementComponent()
 	bOrientRotationToMovement = true;
 	RotationRate = FRotator(0.0f, 500.0f, 0.0f);
 	MinAnalogWalkSpeed = 20.f;
-	SetWalkableFloorAngle(MaxWalkableAngle); //50µµ ÀÌ»óºÎÅÍ´Â °È±â ºÒ°¡´É
+	SetWalkableFloorAngle(MaxWalkableAngle); //75ë„ ì´ìƒë¶€í„°ëŠ” ê±·ê¸° ë¶ˆê°€ëŠ¥
 }
 
 void UParkourMovementComponent::BeginPlay()
@@ -20,29 +20,29 @@ void UParkourMovementComponent::BeginPlay()
 	Player = Cast<ASpeedRunCharacter>(GetOwner());
 }
 
-// °¢µµ¿¡ µû¸¥ ÀúÇ×ÀÌ Æ÷ÇÔµÈ ¼Óµµ ±¸ÇÏ±â
+// ê°ë„ì— ë”°ë¥¸ ì €í•­ì´ í¬í•¨ëœ ì†ë„ êµ¬í•˜ê¸°
 float UParkourMovementComponent::GetMaxSpeed() const
 {
 	float MaxSpeed = Super::GetMaxSpeed();
 
-	if (MovementMode == MOVE_Walking && CurrentFloor.bBlockingHit) //¹Ù´Ú¿¡ ´ê¾Æ ÀÖÀ» ¶§
+	if (MovementMode == MOVE_Walking && CurrentFloor.bBlockingHit) //ë°”ë‹¥ì— ë‹¿ì•„ ìˆì„ ë•Œ
 	{
-		// ÇÃ·¹ÀÌ¾î°¡ °¡·Á´Â ¹æÇâ
+		// í”Œë ˆì´ì–´ê°€ ê°€ë ¤ëŠ” ë°©í–¥
 		FVector MoveDirection = Acceleration.GetSafeNormal();
-		// ¹Ù´Ú ¹ı¼± º¤ÅÍ
+		// ë°”ë‹¥ ë²•ì„  ë²¡í„°
 		FVector FloorNormal = CurrentFloor.HitResult.ImpactNormal;
-		// À½¼ö: ¿À¸£¸·±æ / ¾ç¼ö: ³»¸®¸·±æ
+		// ìŒìˆ˜: ì˜¤ë¥´ë§‰ê¸¸ / ì–‘ìˆ˜: ë‚´ë¦¬ë§‰ê¸¸
 		float SlopeDot = FVector::DotProduct(MoveDirection, FloorNormal);
 
 		if (SlopeDot < 0.f)
 		{
-			// ¹Ù´Ú °¢µµ °è»ê
+			// ë°”ë‹¥ ê°ë„ ê³„ì‚°
 			float CurrentAngle = FMath::RadiansToDegrees(FMath::Acos(FloorNormal.Z));
-			// °¢µµ¿¡ µû¶ó 1.0 ~ 0.3 À¸·Î Á¶Àı
+			// 0ë„ : ì†ë„ * 1.0ë°° ~ 75ë„ : ì†ë„ * 0.05ë°°
 			float SpeedMultiplier = FMath::GetMappedRangeValueClamped(
-				FVector2D(0.f, MaxWalkableAngle), // °¢µµ ¹üÀ§
-				FVector2D(1.f, 0.05f), // Ãâ·Â ¹üÀ§
-				CurrentAngle //½ÇÁ¦ ¹Ù´Ú °¢µµ
+				FVector2D(0.f, MaxWalkableAngle), // ê°ë„ ë²”ìœ„
+				FVector2D(1.f, 0.05f), // ì¶œë ¥ ë²”ìœ„
+				CurrentAngle //ì‹¤ì œ ë°”ë‹¥ ê°ë„
 			);
 			MaxSpeed *= SpeedMultiplier;
 		}
@@ -71,14 +71,14 @@ void UParkourMovementComponent::PhysHang(float deltaTime, int32 Iterations)
 	if (deltaTime < MIN_TICK_TIME) return;
 
 	FVector WallNormal = UpdatedComponent->GetForwardVector() * -1.f;
-	FVector WallRight = FVector::CrossProduct(FVector::UpVector, WallNormal).GetSafeNormal();
+	FVector ShimmyAxis = FVector::CrossProduct(FVector::UpVector, WallNormal).GetSafeNormal();
 
-	// ÀÔ·Â°ª°ú WallRight ÀÏÄ¡ÇÏ´ÂÁö È®ÀÎ -> Å° ÀÔ·ÂÀÇ ¿ŞÂÊ/¿À¸¥ÂÊ ±¸ºĞ
-	float InputDir = FVector::DotProduct(Acceleration.GetSafeNormal(), WallRight);
+	// ì…ë ¥ê°’ì´ ì´ ì¶•ì˜ ì–´ëŠ ìª½ì„ í–¥í•˜ëŠ”ì§€ ë‚´ì ìœ¼ë¡œ íŒë³„ -> ì¢Œ/ìš° êµ¬ë¶„
+	float InputDir = FVector::DotProduct(Acceleration.GetSafeNormal(), ShimmyAxis);
 
 	if (FMath::Abs(InputDir) > 0.1f)
 	{
-		Velocity = WallRight * (InputDir > 0 ? MaxShimmySpeed : -MaxShimmySpeed);
+		Velocity = ShimmyAxis * (InputDir > 0 ? MaxShimmySpeed : -MaxShimmySpeed);
 	}
 	else
 	{

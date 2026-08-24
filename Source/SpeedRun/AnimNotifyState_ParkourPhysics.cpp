@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "AnimNotifyState_ParkourPhysics.h"
@@ -16,7 +16,7 @@ void UAnimNotifyState_ParkourPhysics::NotifyBegin(USkeletalMeshComponent* MeshCo
 		{
 			if (UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement())
 			{
-				// 1.±âÁ¸¿¡ ³²¾ÆÀÖ´ø °¡¼Óµµ³ª °ü¼º ¿Ïº®ÇÏ°Ô Á¦°Å
+				// 1.ê¸°ì¡´ì— ë‚¨ì•„ìžˆë˜ ê°€ì†ë„ë‚˜ ê´€ì„± ì™„ë²½í•˜ê²Œ ì œê±°
 				MovementComponent->StopMovementImmediately();
 				
 				MovementComponent->SetMovementMode(EMovementMode::MOVE_Flying);
@@ -36,7 +36,7 @@ void UAnimNotifyState_ParkourPhysics::NotifyEnd(USkeletalMeshComponent* MeshComp
 		{
 			if (UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement())
 			{
-				// °È±â(Áß·Â) »óÅÂ·Î º¹±¸
+				// ê±·ê¸°(ì¤‘ë ¥) ìƒíƒœë¡œ ë³µêµ¬
 				MovementComponent->SetMovementMode(EMovementMode::MOVE_Walking);
 				Character->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 			}

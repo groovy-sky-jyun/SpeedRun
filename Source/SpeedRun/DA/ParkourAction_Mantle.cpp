@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "ParkourAction_Mantle.h"
@@ -23,10 +23,11 @@ float UParkourAction_Mantle::Evaluate(UParkourComponent* Component, const FEnvDa
 	uint8 CustomMode = ParkourMovement ? ParkourMovement->CustomMovementMode : 0;
 
 	float CapsuleRadius = Player->GetCapsuleComponent()->GetScaledCapsuleRadius();
+	float StandableDepth = CapsuleRadius * MinDepth;
 
 	if (CurrentMode == MOVE_Custom && CustomMode == static_cast<uint8>(ECustomMovementMode::CUSTOM_Hang))
 	{
-		if (ObsData.Depth >= CapsuleRadius * 2.0f)
+		if (ObsData.Depth >= StandableDepth)
 		{
 			return 200.f;
 		}
@@ -34,18 +35,14 @@ float UParkourAction_Mantle::Evaluate(UParkourComponent* Component, const FEnvDa
 
 	if (CurrentMode == MOVE_Walking)
 	{
-		float MaxHeightVault = 150.f;
-		float MaxDepthVault = 200.f;
-		float MaxHeightMantle = 250.f;
-
-		if (ObsData.FrontHeight <= MaxHeightVault && ObsData.Depth > MaxDepthVault)
+		if (ObsData.FrontHeight <= LowObstacleMaxHeight && ObsData.Depth > VaultMaxDepth)
 		{
 			return 100.0f;
 		}
 
-		if (ObsData.FrontHeight > MaxHeightVault && ObsData.FrontHeight <= MaxHeightMantle)
+		if (ObsData.FrontHeight > LowObstacleMaxHeight && ObsData.FrontHeight <= MaxHeight)
 		{
-			if (ObsData.Depth >= CapsuleRadius * 2.0f)
+			if (ObsData.Depth >= StandableDepth)
 			{
 				return 100.f;
 			}
@@ -67,7 +64,7 @@ void UParkourAction_Mantle::ExecuteAction(UParkourComponent* Component, const FE
 	UCharacterMovementComponent* MovementComponent = Player->GetCharacterMovement();
 	if (MovementComponent->CustomMovementMode == static_cast<uint8>(ECustomMovementMode::CUSTOM_Hang))
 	{
-		MovementComponent->SetMovementMode(MOVE_Flying); // Áß·Â ¹«½ÃÇÏ°í ¾Ö´Ï¸ÞÀÌ¼Ç ¼öÇà
+		MovementComponent->SetMovementMode(MOVE_Flying); // ì¤‘ë ¥ ë¬´ì‹œí•˜ê³  ì• ë‹ˆë©”ì´ì…˜ ìˆ˜í–‰
 		MovementComponent->Velocity = FVector::ZeroVector;
 	}
 

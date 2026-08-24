@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -20,4 +20,17 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour")
 	FGameplayTag WindowLedgeTag;
+
+	UPROPERTY(EditAnywhere, Category = "Hang")
+	float MinHeight = 150.f;
+
+	UPROPERTY(EditAnywhere, Category = "Hang")
+	float MaxHeight = 250.f;
+
+	// Ledge 위치 보정
+	UPROPERTY(EditAnywhere, Category = "Hang")
+	float LedgeForwardOffset = 62.f;
+
+	UPROPERTY(EditAnywhere, Category = "Hang")
+	float LedgeVerticalOffset = 26.f;
 };

@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "ParkourAction_Vault.h"
@@ -8,7 +8,7 @@
 
 float UParkourAction_Vault::Evaluate(UParkourComponent* Component, const FEnvData& EnvData, ASpeedRunCharacter* Player) const
 {
-	// MOVE_Walking »óÅÂ¿¡¼­¸¸ Vault °¡´É
+	// MOVE_Walking ìƒíƒœì—ì„œë§Œ Vault ê°€ëŠ¥
 	if (Player->GetCharacterMovement()->MovementMode != MOVE_Walking)
 	{
 		return -1.0f;
@@ -16,13 +16,9 @@ float UParkourAction_Vault::Evaluate(UParkourComponent* Component, const FEnvDat
 
 	const FObstacleData& ObsData = EnvData.Obstacle_Data;
 
-	float MinHeightVault = 50.f;
-	float MaxHeightVault = 150.f;
-	float MaxDepthVault = 200.0f;
-
-	if (ObsData.FrontHeight < MinHeightVault) return -1.0f;
-	if (ObsData.FrontHeight > MaxHeightVault) return -1.0f;
-	if (ObsData.Depth > MaxDepthVault) return -1.0f;
+	if (ObsData.FrontHeight < MinHeight) return -1.0f;
+	if (ObsData.FrontHeight > MaxHeight) return -1.0f;
+	if (ObsData.Depth > MaxDepth) return -1.0f;
 
 	return 100.0f;
 }

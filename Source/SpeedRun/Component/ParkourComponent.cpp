@@ -212,7 +212,7 @@ FHitResult UParkourComponent::TryDetectObstacle(FVector ActorLocation, FVector A
 	FVector Start = Player->GetActorLocation() + FVector(0.f, 0.f, 50.f) + (CameraForward * Radius / 2);
 	FVector End = Start + (CameraForward * 300.f);
 
-	HitResult = SphereTrace(Start, End, Radius, ECollisionChannel::ECC_GameTraceChannel1, true);
+	HitResult = SphereTrace(Start, End, Radius, ECollisionChannel::ECC_GameTraceChannel1, bShowDebugTrace);
 
 	return HitResult;
 }
@@ -240,7 +240,7 @@ bool UParkourComponent::UpdateObstacleData(FHitResult ObstacleHitResult, AParkou
 	FVector UpperSurfacePlusOffset = UpperSurfaceLocation + FVector(0.f, 0.f, ZOffset);
 	FVector FrontLedgePlusOffset = ObsData.FrontLedgeLocation + FVector(0.f, 0.f, ZOffset);
 	
-	FHitResult UpperPathHit = CapsuleTrace(FrontLedgePlusOffset, UpperSurfacePlusOffset, CapsuleRadius, CapsuleHalfHeight, true);
+	FHitResult UpperPathHit = CapsuleTrace(FrontLedgePlusOffset, UpperSurfacePlusOffset, CapsuleRadius, CapsuleHalfHeight, bShowDebugTrace);
 
 	// 3.1.Return if any obstacle is detected.
 	if (UpperPathHit.bBlockingHit || UpperPathHit.bStartPenetrating)
@@ -406,6 +406,11 @@ FHitResult UParkourComponent::CapsuleTrace(const FVector& Start, const FVector& 
 
 void UParkourComponent::DrawSphereTrace(const FVector& Center, float Radius, float LifeTime) const
 {
+	if (!bShowDebugTrace)
+	{
+		return;
+	}
+
 	DrawDebugSphere(
 		GetWorld(),
 		Center,

@@ -26,10 +26,7 @@ float UParkourAction_Hang::Evaluate(UParkourComponent* Component, const FEnvData
 		return 150.f;
 	}
 
-	float MaxHeightVault = 150.f;
-	float MaxHeightHang = 250.f;
-
-	if (CurrentMode == MOVE_Walking && ObsData.FrontHeight > MaxHeightVault && ObsData.FrontHeight <= MaxHeightHang)
+	if (CurrentMode == MOVE_Walking && ObsData.FrontHeight > MinHeight && ObsData.FrontHeight <= MaxHeight)
 	{
 		return 100.f;
 	}
@@ -48,8 +45,8 @@ void UParkourAction_Hang::ExecuteAction(UParkourComponent* Component, const FEnv
 
 	if (ObsData.bHasFrontLedge)
 	{
-		FVector TargetLocation = ObsData.FrontLedgeLocation + (ObsData.FrontLedgeNormal * 62.f);
-		TargetLocation.Z -= Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 2 + 26.f;
+		FVector TargetLocation = ObsData.FrontLedgeLocation + (ObsData.FrontLedgeNormal * LedgeForwardOffset);
+		TargetLocation.Z -= Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 2 + LedgeVerticalOffset;
 		Component->AddWarpTarget(FName("HangPosition"), TargetLocation, ObsData.FrontLedgeNormal);
 	}
 

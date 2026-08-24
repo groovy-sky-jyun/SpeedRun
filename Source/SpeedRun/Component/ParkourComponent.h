@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -98,7 +98,7 @@ protected:
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	//===== �׼� ���� (Execution) =====//
+	//===== 액션 수행 (Execution) =====//
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
 	void PerformJumpSequence();
 
@@ -122,6 +122,15 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Parkour|State")
 	bool bIsHanging = false;
 
+	// BackLedge 에서 뒤쪽 바닥까지의 낙차 최소 거리
+	UPROPERTY(EditAnywhere, Category = "Parkour|Config")
+	float MinHeightBlock = 50.f;
+
+	// 파쿠르 판정 트레이스를 화면에 그릴지 여부.
+	// 켜면 스페이스바를 누를 때 감지 구체 / 캡슐 경로 / 렛지 마커가 보인다.
+	UPROPERTY(EditAnywhere, Category = "Parkour|Debug")
+	bool bShowDebugTrace = false;
+
 	UPROPERTY(EditAnywhere, Instanced, Category = "Parkour|Actions")
 	TArray<UParkourActionBase*> RegisteredActions;
 
@@ -144,7 +153,7 @@ private:
 
 
 private:
-	//===== ���� �� ���� ���� =====//
+	//===== 참조 및 상태 변수 =====//
 	UPROPERTY()
 	TObjectPtr<ASpeedRunCharacter> Player;
 
@@ -159,7 +168,6 @@ private:
 
 	float CapsuleRadius;
 	float CapsuleHalfHeight;
-	float MinHeightBlock = 50.f;
 
 
 /*

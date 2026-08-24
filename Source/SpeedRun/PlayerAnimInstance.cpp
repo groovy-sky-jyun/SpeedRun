@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+Ôªø// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "PlayerAnimInstance.h"
@@ -31,8 +31,8 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	GroundSpeed = Velocity.Size2D();
 
 	/*
-	* izeSquared2D(): x^2 + y^2 (º∫¥… √÷¿˚»≠∏¶ ¿ß«ÿ ¡¶∞ˆ¿ª ªÁøÎ)
-	* ∞°º”µµ∞° 0¿Ã æ∆¥œ∞Ì º”µµ∞° 0.01∫∏¥Ÿ ≈´ ∞ÊøÏ
+	* izeSquared2D(): x^2 + y^2 (ÏÑ±Îä• ÏµúÏ†ÅÌôîÎ•º ÏúÑÌï¥ Ï†úÍ≥±ÏùÑ ÏÇ¨Ïö©)
+	* Í∞ÄÏÜçÎèÑÍ∞Ä 0Ïù¥ ÏïÑÎãàÍ≥† ÏÜçÎèÑÍ∞Ä 0.01Î≥¥Îã§ ÌÅ∞ Í≤ΩÏö∞
 	*/
 	bShouldMove = (Movement->GetCurrentAcceleration().SizeSquared2D() != 0.0f) && (GroundSpeed > 0.01);
 
@@ -48,7 +48,7 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 		if (bIsHanging)
 		{
-			// ≥ª¿˚ +-∑Œ πÊ«‚ √ﬂ√‚
+			// ÎÇ¥Ï†Å +-Î°ú Î∞©Ìñ• Ï∂îÏ∂ú
 			ShimmySpeed = FVector::DotProduct(Velocity, Character->GetActorRightVector());
 
 			const FEnvData& EnvData = ParkourComponent->CurrentEnvData;
@@ -57,7 +57,7 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 			FVector WallRight = FVector::CrossProduct(LedgeNormal, FVector::UpVector).GetSafeNormal();
 
-			float HandSpread = 50.f; //æÁ º’ ∞£∞›
+			float HandSpread = 50.f; //Ïñë ÏÜê Í∞ÑÍ≤©
 
 			HandIKLocationL = LedgeLocation - (WallRight * HandSpread);
 			HandIKLocationR = LedgeLocation + (WallRight * HandSpread);

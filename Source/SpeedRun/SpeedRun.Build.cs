@@ -15,8 +15,6 @@ public class SpeedRun : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"AIModule",
-			"StateTreeModule",
-			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
 			"MotionWarping",
