@@ -87,7 +87,7 @@ Source/SpeedRun/
 ---
 ## 빌드
 
-Unreal Engine 5.7과 Visual Studio 2022가 필요합니다.
+Unreal Engine 5.7과 Visual Studio 가 필요합니다.
 
 ```
 
