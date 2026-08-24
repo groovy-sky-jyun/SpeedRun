@@ -40,8 +40,8 @@
   
 
 > [!NOTE]
-> 매달린 상태에서는 같은 키라도 동작이 달라진다.
->`Space`는 올라서기, `C`는 내려오기, `A` `D`는 좌우 이동(Shimmy)이 된다.
+> 매달린 상태에서는 같은 키라도 동작이 달라집니다.
+>`Space`는 올라서기, `C`는 내려오기, `A` `D`는 좌우 이동(Shimmy)이 됩니다.
 
   
 
@@ -81,13 +81,13 @@ Source/SpeedRun/
 
 ```
 
-액션을 추가하려면 `UParkourActionBase`를 상속한 클래스를 만들고, `BP_Player`의 `RegisteredActions` 배열에 등록하면 된다.
+액션을 추가하려면 `UParkourActionBase`를 상속한 클래스를 만들고, `BP_Player`의 `RegisteredActions` 배열에 등록하면 됩니다.
 
 
 ---
 ## 빌드
 
-Unreal Engine 5.7과 Visual Studio 가 필요하다.
+Unreal Engine 5.7과 Visual Studio 가 필요합니다.
 
 ```
 
