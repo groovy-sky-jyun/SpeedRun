@@ -25,4 +25,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Parkour")
 	UChooserTable* ActionChooser;
 	
+
+protected:
+	// ActionChooser 로 현재 환경에 맞는 몽타주를 골라 재생한다.
+	// Chooser 가 없거나 조건에 맞는 행이 없으면 아무것도 하지 않는다.
+	void PlaySelectedMontage(ASpeedRunCharacter* Player, const FEnvData& EnvData) const;
 };

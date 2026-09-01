@@ -94,10 +94,6 @@ void UParkourMovementComponent::PhysHang(float deltaTime, int32 Iterations)
 	UpdateComponentVelocity();
 }
 
-void UParkourMovementComponent::PhysWallRun(float deltaTime, int32 Iterations)
-{
-}
-
 float UParkourMovementComponent::GetSpeed() const
 {
 	return Velocity.Length();

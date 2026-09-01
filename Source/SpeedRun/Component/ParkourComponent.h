@@ -96,8 +96,6 @@ protected:
 
 
 public:	
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
 	//===== 액션 수행 (Execution) =====//
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
 	void PerformJumpSequence();
@@ -105,6 +103,11 @@ public:
 	UParkourActionBase* EvaluateNextAction(const FEnvData& EnvData);
 
 	//===== Action State =====//
+	// 매달림 상태의 단일 진실 공급원(single source of truth).
+	// 상태를 따로 저장하지 않고 커스텀 이동 모드에서 직접 파생시킨다.
+	UFUNCTION(BlueprintPure, Category = "Action|State")
+	bool IsHanging() const;
+
 	UFUNCTION(BlueprintCallable, Category = "Action|State")
 	void DropFromHang();
 
@@ -119,9 +122,6 @@ public:
 
 public:
 	//===== Property =====//
-	UPROPERTY(VisibleAnywhere, Category = "Parkour|State")
-	bool bIsHanging = false;
-
 	// BackLedge 에서 뒤쪽 바닥까지의 낙차 최소 거리
 	UPROPERTY(EditAnywhere, Category = "Parkour|Config")
 	float MinHeightBlock = 50.f;
@@ -169,10 +169,4 @@ private:
 	float CapsuleRadius;
 	float CapsuleHalfHeight;
 
-
-/*
-private:
-	FHitResult BoxTrace(const FVector& Start, const FVector& End, FVector BoxHalfSize, FRotator Rotation, bool bDrawDebug) const;
-	FHitResult LineTrace(const FVector& Start, const FVector& End, bool bDrawDebug) const;
-	*/
 };

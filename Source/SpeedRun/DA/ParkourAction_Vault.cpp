@@ -4,7 +4,6 @@
 #include "ParkourAction_Vault.h"
 #include "SpeedRunCharacter.h"
 #include "ParkourMovementComponent.h"
-#include "ChooserFunctionLibrary.h"
 
 float UParkourAction_Vault::Evaluate(UParkourComponent* Component, const FEnvData& EnvData, ASpeedRunCharacter* Player) const
 {
@@ -38,26 +37,5 @@ void UParkourAction_Vault::ExecuteAction(UParkourComponent* Component, const FEn
 		Component->AddWarpTarget(FName("Landing"), ObsData.LandingSurfaceLocation, ObsData.FrontLedgeNormal);
 	}
 
-	if (ActionChooser)
-	{
-		FChooserEvaluationContext Context;
-
-		FEnvData TempEnvData = EnvData;
-		Context.AddStructParam(TempEnvData);
-
-		FInstancedStruct ChooserStruct = UChooserFunctionLibrary::MakeEvaluateChooser(ActionChooser);
-
-		UObject* ResultObj = UChooserFunctionLibrary::EvaluateObjectChooserBase(
-			Context,
-			ChooserStruct,
-			UAnimMontage::StaticClass()
-		);
-
-		UAnimMontage* SelectedMontage = Cast<UAnimMontage>(ResultObj);
-
-		if (SelectedMontage)
-		{
-			Player->PlayAnimMontage(SelectedMontage);
-		}
-	}
+	PlaySelectedMontage(Player, EnvData);
 }

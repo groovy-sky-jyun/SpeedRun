@@ -20,9 +20,8 @@ public class SpeedRun : ModuleRules
 			"MotionWarping",
 			"GameplayTags",
 			"Chooser",
-			"StructUtils",	
-            "AnimGraphRuntime"
-        });
+			"AnimGraphRuntime"
+		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 

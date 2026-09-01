@@ -12,10 +12,7 @@ UENUM(BlueprintType)
 enum ECustomMovementMode
 {
 	CUSTOM_None,
-	CUSTOM_Hang,
-	CUSTOM_WallRun,
-	CUSTOM_Swing,
-	CUSTOM_WallSidle
+	CUSTOM_Hang
 };
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SPEEDRUN_API UParkourMovementComponent : public UCharacterMovementComponent
@@ -48,7 +45,6 @@ protected:
 
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 	void PhysHang(float deltaTime, int32 Iterations);
-	void PhysWallRun(float deltaTime, int32 Iterations);
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Physics")

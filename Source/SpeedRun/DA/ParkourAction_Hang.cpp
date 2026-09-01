@@ -4,7 +4,6 @@
 #include "ParkourAction_Hang.h"
 #include "SpeedRunCharacter.h"
 #include "ParkourMovementComponent.h"
-#include "ChooserFunctionLibrary.h"
 #include "Components/CapsuleComponent.h"
 
 float UParkourAction_Hang::Evaluate(UParkourComponent* Component, const FEnvData& EnvData, ASpeedRunCharacter* Player) const
@@ -12,7 +11,7 @@ float UParkourAction_Hang::Evaluate(UParkourComponent* Component, const FEnvData
 	const FObstacleData& ObsData = EnvData.Obstacle_Data;
 
 	if (!ObsData.bHasFrontLedge) return -1.0f;
-	if (Component->bIsHanging) return -1.0f;
+	if (Component->IsHanging()) return -1.0f;
 
 	if (EnvData.HitParkourTag == WindowLedgeTag)
 	{
@@ -50,26 +49,5 @@ void UParkourAction_Hang::ExecuteAction(UParkourComponent* Component, const FEnv
 		Component->AddWarpTarget(FName("HangPosition"), TargetLocation, ObsData.FrontLedgeNormal);
 	}
 
-	if (ActionChooser)
-	{
-		FChooserEvaluationContext Context;
-
-		FEnvData TempEnvData = EnvData;
-		Context.AddStructParam(TempEnvData);
-
-		FInstancedStruct ChooserStruct = UChooserFunctionLibrary::MakeEvaluateChooser(ActionChooser);
-
-		UObject* ResultObj = UChooserFunctionLibrary::EvaluateObjectChooserBase(
-			Context,
-			ChooserStruct,
-			UAnimMontage::StaticClass()
-		);
-
-		UAnimMontage* SelectedMontage = Cast<UAnimMontage>(ResultObj);
-
-		if (SelectedMontage)
-		{
-			Player->PlayAnimMontage(SelectedMontage);
-		}
-	}
+	PlaySelectedMontage(Player, EnvData);
 }

@@ -72,39 +72,4 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|IK")
 	float HandIKAlpha;
 
-	/*
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
-	bool bCanMove;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	bool bIsOnLedge;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	bool bLedgeHasFootSurfaceL;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	bool bLedgeHasFootSurfaceR;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	float LeftFootAlpha;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	float RightFootAlpha;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour|Ledge")
-	bool bOverrideFootIK;
-
- */
-
-
-public:
-	/*
-	UFUNCTION()
-	void AnimNotify_ToHangBlendOut();
-
-	UFUNCTION()
-	void AnimNotify_ToHangEnd();
-
-	UFUNCTION()
-	void AnimNotify_ClimbUpEnd();*/
 };

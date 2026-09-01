@@ -44,7 +44,7 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	if (ParkourComponent)
 	{
-		bIsHanging = ParkourComponent->bIsHanging;
+		bIsHanging = ParkourComponent->IsHanging();
 
 		if (bIsHanging)
 		{
@@ -73,9 +73,4 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		}
 	}
 
-	//bOverrideFootIK = ParkourComponent->GetOverrideFootIK();
-	//bLedgeHasFootSurfaceL = ParkourComponent->GetLedgeHasFootSurfaceL();
-	//bLedgeHasFootSurfaceR = ParkourComponent->GetLedgeHasFootSurfaceR();
-	//LeftFootAlpha = FMath::FInterpTo(LeftFootAlpha, float(!bLedgeHasFootSurfaceL), GetWorld()->GetDeltaSeconds(), 0.2f);
-	//RightFootAlpha = FMath::FInterpTo(RightFootAlpha, float(!bLedgeHasFootSurfaceR), GetWorld()->GetDeltaSeconds(), 0.2f);
 }

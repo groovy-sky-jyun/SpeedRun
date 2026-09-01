@@ -122,7 +122,7 @@ void ASpeedRunCharacter::DoMove(float Right, float Forward)
 {
 	if (!GetController()) return;
 
-	if (ParkourComponent && ParkourComponent->bIsHanging)
+	if (ParkourComponent && ParkourComponent->IsHanging())
 	{
 		if (Forward > 0.5f)
 		{
@@ -152,13 +152,8 @@ void ASpeedRunCharacter::DoMove(float Right, float Forward)
 
 void ASpeedRunCharacter::DoUp()
 {
-	if (ParkourComponent->bIsHanging)
-	{
-		ParkourComponent->DropFromHang();
-		ParkourComponent->PerformJumpSequence();
-		return;
-	}
-
+	// 매달림 여부와 무관하게 액션 평가에 맡긴다.
+	// 매달려 있으면 Mantle 이 CUSTOM_Hang 을 보고 높은 점수를 반환해 올라서기가 선택된다.
 	if (ParkourComponent)
 	{
 		ParkourComponent->PerformJumpSequence();
@@ -170,7 +165,7 @@ void ASpeedRunCharacter::DoUp()
 
 void ASpeedRunCharacter::DoDown()
 {
-	if (ParkourComponent->bIsHanging)
+	if (ParkourComponent && ParkourComponent->IsHanging())
 	{
 		ParkourComponent->DropFromHang();
 		return;
@@ -192,7 +187,7 @@ void ASpeedRunCharacter::DoDown()
 
 void ASpeedRunCharacter::DoDash()
 {
-	if (ParkourComponent->bIsHanging) return;
+	if (ParkourComponent && ParkourComponent->IsHanging()) return;
 
 	FVector ForwardDir = GetActorForwardVector();
 	LaunchCharacter(ForwardDir * DashDistance, true, true);

@@ -14,7 +14,7 @@
 
 UParkourComponent::UParkourComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
 
@@ -32,12 +32,6 @@ void UParkourComponent::BeginPlay()
 
 	CapsuleRadius = Player->GetCapsuleComponent()->GetScaledCapsuleRadius();
 	CapsuleHalfHeight = Player->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-}
-
-
-void UParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
 
@@ -101,11 +95,17 @@ UParkourActionBase* UParkourComponent::EvaluateNextAction(const FEnvData& EnvDat
 //=================================
 //      Hang 및 Drop         
 //=================================
+bool UParkourComponent::IsHanging() const
+{
+	if (!ParkourMovement) return false;
+
+	return ParkourMovement->MovementMode == MOVE_Custom
+		&& ParkourMovement->CustomMovementMode == static_cast<uint8>(ECustomMovementMode::CUSTOM_Hang);
+}
+
 void UParkourComponent::DropFromHang()
 {
-	if (!bIsHanging) return;
-
-	bIsHanging = false;
+	if (!IsHanging()) return;
 
 	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
 	{
@@ -120,9 +120,7 @@ void UParkourComponent::DropFromHang()
 
 void UParkourComponent::EnterHangState()
 {
-	if (bIsHanging) return;
-
-	bIsHanging = true;
+	if (IsHanging()) return;
 
 	Player->GetCharacterMovement()->StopMovementImmediately();
 	Player->GetCharacterMovement()->SetMovementMode(MOVE_Custom, static_cast<uint8>(ECustomMovementMode::CUSTOM_Hang));
@@ -423,46 +421,3 @@ void UParkourComponent::DrawSphereTrace(const FVector& Center, float Radius, flo
 		1.0f                // Thickness 
 	);
 }
-
-/*
-FHitResult UParkourComponent::BoxTrace(const FVector& Start, const FVector& End, FVector BoxHalfSize, FRotator Rotation, bool bDrawDebug) const
-{
-	FHitResult HitResult;
-	TArray<AActor*> ActorsToIgnore;
-	ActorsToIgnore.Add(Player);
-
-	UKismetSystemLibrary::BoxTraceSingle(
-		GetWorld(),
-		Start,
-		End,
-		BoxHalfSize, //FVector(가로, 세로, 높이)
-		Rotation,
-		UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1),
-		false,
-		ActorsToIgnore,
-		bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
-		HitResult,
-		true,
-		FLinearColor::Red,
-		FLinearColor::Green,
-		5.0f
-	);
-
-	return HitResult;
-}
-
-FHitResult UParkourComponent::LineTrace(const FVector& Start, const FVector& End, bool bDrawDebug) const
-{
-	FHitResult HitResult;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(Player);
-	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_GameTraceChannel1, Params);
-
-	if (bDrawDebug)
-	{
-		DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Green : FColor::Red, false, 3.f);
-	}
-
-	return HitResult;
-}
-*/
