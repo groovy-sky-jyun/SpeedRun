@@ -73,8 +73,7 @@ Source/SpeedRun/
 │  ├─ ParkourActionBase           액션 공통 인터페이스
 │  ├─ ParkourAction_Vault         넘어가기
 │  ├─ ParkourAction_Mantle        올라서기
-│  ├─ ParkourAction_Hang          매달리기
-│  └─ DA_*TraceOption             트레이스 규격 데이터
+│  └─ ParkourAction_Hang          매달리기
 ├─ ParkourBlock                   레벨 배치용 액터 · 난간 스플라인 자동 생성
 ├─ PlayerAnimInstance             Shimmy 속도 · 양손 IK
 └─ SpeedRunPlayerController       상태별 InputMappingContext 전환
