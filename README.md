@@ -15,7 +15,7 @@
 
 - **매달리기 전용 이동 모드** — 커스텀 이동 모드에서 벽면 좌우 이동(Shimmy)과 양손 IK 처리
 
-- **데이터 주도 애니메이션** — Chooser Table이 높이 · 깊이 · 속도 범위로 몽타주를 선택
+- **데이터 주도 애니메이션** — Chooser Table이 자동으로 높이 · 깊이 · 속도 범위 조건이 일치하는 몽타주를 선택
 
 - **파쿠르 블록** — 레벨에 배치하고 크기만 조절하면 난간 데이터와 치수 표시가 자동 갱신
 
@@ -53,7 +53,7 @@
 |---|---|
 | 엔진 | Unreal Engine 5.7 |
 | 언어 | C++ · Blueprint (데이터 · 애니메이션 조립) |
-| 플러그인 | Chooser · Motion Warping · Landmass |
+| 플러그인 | Chooser · Motion Warping |
 | 개발 툴 | Visual Studio · Git |
 | 리소스 | Mixamo |
 
@@ -74,8 +74,8 @@ Source/SpeedRun/
 │  ├─ ParkourAction_Vault         넘어가기
 │  ├─ ParkourAction_Mantle        올라서기
 │  └─ ParkourAction_Hang          매달리기
-├─ ParkourBlock                   레벨 배치용 액터 · 난간 스플라인 자동 생성
-├─ PlayerAnimInstance             Shimmy 속도 · 양손 IK
+├─ ParkourBlock                   Level 배치용 액터 · 난간 스플라인 자동 생성
+├─ PlayerAnimInstance             Shimmy 애니메이션 속도 · 양손 IK
 └─ SpeedRunPlayerController       상태별 InputMappingContext 전환
 
 ```
@@ -88,15 +88,6 @@ Source/SpeedRun/
 
 Unreal Engine 5.7과 Visual Studio 가 필요합니다.
 
-```
-
-1. SpeedRun.uproject 우클릭 → Generate Visual Studio project files
-
-2. SpeedRun.sln 열기 → Development Editor / Win64 로 빌드
-
-3. SpeedRun.uproject 실행
-
-```
 
   
 
